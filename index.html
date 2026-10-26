@@ -865,7 +865,7 @@
         return;
       }
 
-      // VALIDACIÓN ESTRICTA ANTI-DUPLICADOS (Verifica en memoria y en Firestore)
+      // Comprobación anti-duplicados estricta
       const existeEnMemoria = remitosList.some(r => String(r.numero).trim() === numero);
       if (existeEnMemoria) {
         alert(`ERROR: El remito Nº ${numero} ya existe en el sistema. Cambia el número antes de guardar.`);
@@ -878,7 +878,7 @@
           const { doc, getDoc } = window.firestoreMethods;
           const snapCheck = await getDoc(doc(db, "remitos", String(numero)));
           if (snapCheck.exists()) {
-            alert(`ERROR: El remito Nº ${numero} ya está registrado en la base de datos de Firebase. Por favor verifica la numeración.`);
+            alert(`ERROR: El remito Nº ${numero} ya está registrado en la base de datos.`);
             return;
           }
         } catch(e) {
@@ -927,7 +927,6 @@
           await setDoc(docRef, nuevoRemito);
         }
 
-        // Incremento automático al siguiente número
         const numVal = parseInt(numero, 10);
         if (!isNaN(numVal)) {
           numInput.value = String(numVal + 1).padStart(numero.length, "0");
@@ -951,7 +950,9 @@
       }
     }
 
-    // GENERADOR PDF VERTICAL EXACTO (220 mm ancho x 340 mm alto)
+    // GENERADOR PDF GIRADO 90° EXACTO
+    // El papel mide 220 mm de ancho x 340 mm de alto al entrar en la Brother.
+    // Los textos se escriben horizontalmente a lo ancho (220 mm) con el membrete apuntando a la izquierda.
     function generarPDFImpresion(data) {
       const { jsPDF } = window.jspdf;
       
@@ -967,37 +968,45 @@
       doc.setFont("courier", "bold");
       doc.setFontSize(10);
 
-      for (let i = 0; i < 3; i++) {
-        const topBase = (i * 113.33) + oy;
-        const leftBase = ox;
+      // Función que ubica el texto girado 90° de manera que quede horizontal respecto al pliego preimpreso
+      // xRemito: posición de izquierda a derecha en el remito (0 a 220 mm)
+      // yRemito: posición de arriba hacia abajo dentro de cada cuerpo (0 a 113.33 mm)
+      function printCell(text, xRemito, yRemito, cuerpoIndex) {
+        if (!text) return;
+        const avancePliego = (cuerpoIndex * 113.33) + yRemito + oy;
+        const avanceAncho = (220 - xRemito) + ox;
+        // Al rotar 90°, el eje X del PDF recibe el avance del pliego y el eje Y recibe el ancho invertido
+        doc.text(String(text), avancePliego, avanceAncho, { angle: 90 });
+      }
 
+      for (let i = 0; i < 3; i++) {
         // FECHA
-        doc.text(String(data.fecha || ""), leftBase + 168, topBase + 16);
+        printCell(data.fecha || "", 170, 16, i);
 
         // CLIENTE
-        doc.text(String(data.cliente?.razon || ""), leftBase + 24, topBase + 28);
-        doc.text(String(data.cliente?.localidad || ""), leftBase + 155, topBase + 28);
-        doc.text(String(data.cliente?.domicilio || ""), leftBase + 24, topBase + 34);
-        doc.text(String(data.cliente?.cuit || ""), leftBase + 155, topBase + 34);
+        printCell(data.cliente?.razon || "", 25, 28, i);
+        printCell(data.cliente?.localidad || "", 155, 28, i);
+        printCell(data.cliente?.domicilio || "", 25, 34, i);
+        printCell(data.cliente?.cuit || "", 155, 34, i);
 
         // TRANSPORTE
-        doc.text(String(data.transporte?.patente || ""), leftBase + 24, topBase + 40);
-        doc.text(String(data.transporte?.cuit || ""), leftBase + 155, topBase + 40);
-        doc.text(String(data.transporte?.transportista || ""), leftBase + 28, topBase + 45);
-        doc.text(String(data.transporte?.domicilio || ""), leftBase + 24, topBase + 49);
+        printCell(data.transporte?.patente || "", 25, 40, i);
+        printCell(data.transporte?.cuit || "", 155, 40, i);
+        printCell(data.transporte?.transportista || "", 28, 45, i);
+        printCell(data.transporte?.domicilio || "", 25, 49, i);
 
         // MERCADERÍA
-        let itemY = topBase + 59;
+        let yItem = 59;
         if (data.items && data.items.length > 0) {
           data.items.forEach(it => {
-            doc.text(`${it.cant} ${it.unidad}`, leftBase + 15, itemY);
-            doc.text(String(it.desc || ""), leftBase + 45, itemY);
-            itemY += 5;
+            printCell(`${it.cant} ${it.unidad}`, 15, yItem, i);
+            printCell(it.desc || "", 45, yItem, i);
+            yItem += 6;
           });
         }
 
         // OBSERVACIONES
-        doc.text(String(data.obs || ""), leftBase + 35, topBase + 98);
+        printCell(data.obs || "", 35, 98, i);
       }
 
       doc.save(`Remito_${data.numero || "Ranelagh"}.pdf`);
