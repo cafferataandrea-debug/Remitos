@@ -10,7 +10,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, setDoc, onSnapshot, query, orderBy, limit, where, getDocs, deleteDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, setDoc, onSnapshot, query, orderBy, limit, where, getDocs, getDoc, deleteDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCwZA4iI0hZ2ZBMpWJW3Li6VRxEb331gwg",
@@ -26,7 +26,7 @@
       const app = initializeApp(firebaseConfig);
       db = getFirestore(app);
       window.cloudDB = db;
-      window.firestoreMethods = { collection, addDoc, setDoc, onSnapshot, query, orderBy, limit, where, getDocs, deleteDoc, updateDoc, doc };
+      window.firestoreMethods = { collection, addDoc, setDoc, onSnapshot, query, orderBy, limit, where, getDocs, getDoc, deleteDoc, updateDoc, doc };
       window.dispatchEvent(new Event("firebase-ready"));
     } catch(err) {
       console.warn("Error iniciando Firebase:", err);
@@ -865,6 +865,27 @@
         return;
       }
 
+      // VALIDACIÓN ESTRICTA ANTI-DUPLICADOS (Verifica en memoria y en Firestore)
+      const existeEnMemoria = remitosList.some(r => String(r.numero).trim() === numero);
+      if (existeEnMemoria) {
+        alert(`ERROR: El remito Nº ${numero} ya existe en el sistema. Cambia el número antes de guardar.`);
+        return;
+      }
+
+      const db = window.cloudDB;
+      if (db) {
+        try {
+          const { doc, getDoc } = window.firestoreMethods;
+          const snapCheck = await getDoc(doc(db, "remitos", String(numero)));
+          if (snapCheck.exists()) {
+            alert(`ERROR: El remito Nº ${numero} ya está registrado en la base de datos de Firebase. Por favor verifica la numeración.`);
+            return;
+          }
+        } catch(e) {
+          console.warn("Comprobación previa omitida por red:", e);
+        }
+      }
+
       guardandoBloqueado = true;
       const btnGuardar = document.getElementById("btn-guardar-solo");
       const btnImprimir = document.getElementById("btn-imprimir");
@@ -872,7 +893,7 @@
 
       btnGuardar.disabled = true;
       btnImprimir.disabled = true;
-      txtImprimir.innerText = "Generando PDF...";
+      txtImprimir.innerText = "Procesando...";
 
       const cliente = {
         razon: document.getElementById("cli-razon").value.trim(),
@@ -901,12 +922,12 @@
 
       try {
         if(window.cloudDB) {
-          const db = window.cloudDB;
           const { doc, setDoc } = window.firestoreMethods;
           const docRef = doc(db, "remitos", String(numero));
           await setDoc(docRef, nuevoRemito);
         }
 
+        // Incremento automático al siguiente número
         const numVal = parseInt(numero, 10);
         if (!isNaN(numVal)) {
           numInput.value = String(numVal + 1).padStart(numero.length, "0");
@@ -926,12 +947,11 @@
           btnGuardar.disabled = false;
           btnImprimir.disabled = false;
           txtImprimir.innerText = "Descargar PDF Remito";
-        }, 1200);
+        }, 1000);
       }
     }
 
     // GENERADOR PDF VERTICAL EXACTO (220 mm ancho x 340 mm alto)
-    // 3 cuerpos apilados de 113.33 mm cada uno, sin rotaciones
     function generarPDFImpresion(data) {
       const { jsPDF } = window.jspdf;
       
