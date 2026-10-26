@@ -39,13 +39,15 @@
         left: 0 !important;
         top: 0 !important;
         width: 220mm !important;
+        height: 340mm !important;
         margin: 0 !important;
         padding: 0 !important;
+        overflow: hidden !important;
       }
       .no-print { display: none !important; }
       @page {
-        size: 220mm 340mm;
-        margin: 0;
+        size: 220mm 340mm portrait;
+        margin: 0mm;
       }
     }
   </style>
@@ -97,7 +99,6 @@
             <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
               <span class="w-2 h-2 rounded-full bg-cyan-600"></span> Señor (es) / Cliente
             </h3>
-            <!-- BUSCADOR CON FILTRO CLIENTES -->
             <div class="relative w-64">
               <input type="text" id="search-cliente" oninput="filtrarListaDesplegable('cliente', this.value)" onfocus="filtrarListaDesplegable('cliente', this.value)" placeholder="🔍 Buscar cliente por nombre..." class="text-xs border border-cyan-300 rounded px-2.5 py-1.5 w-full bg-white text-cyan-900 font-medium outline-none focus:ring-2 focus:ring-cyan-600">
               <div id="dropdown-cliente" class="hidden absolute left-0 right-0 top-8 bg-white border border-slate-300 rounded shadow-xl max-h-48 overflow-y-auto z-30 text-xs divide-y divide-slate-100"></div>
@@ -131,7 +132,6 @@
             <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
               <span class="w-2 h-2 rounded-full bg-blue-600"></span> Transporte / Patente
             </h3>
-            <!-- BUSCADOR CON FILTRO PATENTES -->
             <div class="relative w-64">
               <input type="text" id="search-patente" oninput="filtrarListaDesplegable('patente', this.value)" onfocus="filtrarListaDesplegable('patente', this.value)" placeholder="🔍 Escribe patente o fletero..." class="text-xs border border-blue-300 rounded px-2.5 py-1.5 w-full bg-white text-blue-900 font-medium outline-none focus:ring-2 focus:ring-blue-600">
               <div id="dropdown-patente" class="hidden absolute left-0 right-0 top-8 bg-white border border-slate-300 rounded shadow-xl max-h-48 overflow-y-auto z-30 text-xs divide-y divide-slate-100"></div>
@@ -168,7 +168,6 @@
               <span class="w-2 h-2 rounded-full bg-emerald-600"></span> Mercadería / Materiales
             </h3>
             <div class="flex items-center gap-2">
-              <!-- BUSCADOR CON FILTRO MATERIALES -->
               <div class="relative w-64">
                 <input type="text" id="search-material" oninput="filtrarListaDesplegable('material', this.value)" onfocus="filtrarListaDesplegable('material', this.value)" placeholder="🔍 Escribe material a insertar..." class="text-xs border border-emerald-300 rounded px-2.5 py-1.5 w-full bg-white text-emerald-900 font-medium outline-none focus:ring-2 focus:ring-emerald-600">
                 <div id="dropdown-material" class="hidden absolute left-0 right-0 top-8 bg-white border border-slate-300 rounded shadow-xl max-h-48 overflow-y-auto z-30 text-xs divide-y divide-slate-100"></div>
@@ -201,16 +200,16 @@
         </div>
       </div>
 
-      <!-- BOTONES ACCION -->
+      <!-- BOTONES ACCION Y CALIBRACION -->
       <div class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex justify-between items-center flex-wrap gap-4">
         <div class="flex items-center gap-3">
-          <label class="text-xs font-semibold text-slate-600">Calibración Brother:</label>
-          <span class="text-xs text-slate-500">Offset X: <input type="number" id="offset-x" value="0" step="0.5" class="w-12 border rounded px-1 text-center font-mono"> mm</span>
-          <span class="text-xs text-slate-500">Offset Y: <input type="number" id="offset-y" value="0" step="0.5" class="w-12 border rounded px-1 text-center font-mono"> mm</span>
+          <label class="text-xs font-semibold text-slate-600">Ajuste Fino Milimétrico (Brother):</label>
+          <span class="text-xs text-slate-500">Horizontal (X): <input type="number" id="offset-x" value="0" step="1" class="w-14 border rounded px-1.5 py-0.5 text-center font-mono"> mm</span>
+          <span class="text-xs text-slate-500">Vertical (Y): <input type="number" id="offset-y" value="0" step="1" class="w-14 border rounded px-1.5 py-0.5 text-center font-mono"> mm</span>
         </div>
         <div class="flex gap-3">
-          <button onclick="guardarRemito(false)" class="bg-slate-700 hover:bg-slate-800 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow-sm">Guardar sin Imprimir</button>
-          <button onclick="guardarEImprimir()" class="bg-cyan-700 hover:bg-cyan-800 text-white font-bold px-6 py-2 rounded-lg text-sm shadow flex items-center gap-2">
+          <button id="btn-guardar-solo" onclick="guardarRemito(false)" class="bg-slate-700 hover:bg-slate-800 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow-sm">Guardar sin Imprimir</button>
+          <button id="btn-imprimir" onclick="guardarEImprimir()" class="bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold px-6 py-2 rounded-lg text-sm shadow flex items-center gap-2">
             <span>🖨️</span> Mandar a Imprimir en Brother
           </button>
         </div>
@@ -258,7 +257,6 @@
   <!-- PESTAÑA 3: PRECARGAS & MAESTROS -->
   <main id="view-maestros" class="max-w-6xl mx-auto p-6 hidden no-print">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-
       <!-- CLIENTES -->
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
         <div class="flex justify-between items-center mb-4">
@@ -294,7 +292,7 @@
     </div>
   </main>
 
-  <!-- MODAL CLIENTE (CREAR / EDITAR) -->
+  <!-- MODAL CLIENTE -->
   <div id="modal-cliente" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden no-print">
     <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
       <div class="flex justify-between items-center mb-4">
@@ -327,7 +325,7 @@
     </div>
   </div>
 
-  <!-- MODAL PATENTE (CREAR / EDITAR) -->
+  <!-- MODAL PATENTE -->
   <div id="modal-patente" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden no-print">
     <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
       <div class="flex justify-between items-center mb-4">
@@ -360,7 +358,7 @@
     </div>
   </div>
 
-  <!-- MODAL MATERIAL (CREAR / EDITAR) -->
+  <!-- MODAL MATERIAL -->
   <div id="modal-material" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden no-print">
     <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 border border-slate-200">
       <div class="flex justify-between items-center mb-4">
@@ -390,7 +388,7 @@
     </div>
   </div>
 
-  <!-- MODAL IMPORTADOR MASIVO DESDE EXCEL -->
+  <!-- MODAL IMPORTADOR MASIVO -->
   <div id="modal-importador" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden no-print">
     <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 border border-slate-200">
       <div class="flex justify-between items-center mb-3">
@@ -404,7 +402,7 @@
         El orden de las columnas debe ser: <b class="text-slate-900">PATENTE | TRANSPORTISTA | CUIT | DOMICILIO</b>.
       </p>
 
-      <textarea id="import-paste-area" rows="6" placeholder="Pega aquí las celdas copiadas de Excel (separadas por tabulaciones o comas)&#10;Ejemplo:&#10;AF 123 CD	Fletes Don Pedro S.R.L.	30-70981245-2	Calle 21 Nº 1450 - Berazategui" class="w-full border border-slate-300 rounded-lg p-3 text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-600 mb-3"></textarea>
+      <textarea id="import-paste-area" rows="6" placeholder="Pega aquí las celdas copiadas de Excel" class="w-full border border-slate-300 rounded-lg p-3 text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-600 mb-3"></textarea>
 
       <div class="flex justify-between items-center mb-4">
         <button onclick="procesarTextoPegado()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-4 py-2 rounded">1. Procesar Datos Pegados</button>
@@ -434,8 +432,8 @@
     </div>
   </div>
 
-  <!-- ZONA DE IMPRESION SOLO DATOS (3 CUERPOS DE 113.3mm) -->
-  <div id="printable-voucher-zone" style="display:none; width: 220mm; font-family: sans-serif; position: relative;"></div>
+  <!-- ZONA DE IMPRESION SOLO DATOS (3 CUERPOS DE 113.33mm EXACTOS) -->
+  <div id="printable-voucher-zone" style="display:none; width: 220mm; height: 340mm; font-family: monospace, sans-serif; position: relative;"></div>
 
   <script>
     let remitosList = [];
@@ -443,11 +441,11 @@
     let patentesList = [];
     let materialesList = [];
     let patentesAImportar = [];
+    let procesandoGuardado = false;
 
     window.addEventListener("DOMContentLoaded", () => {
       document.getElementById("remito-fecha").valueAsDate = new Date();
 
-      // Cerrar listas desplegables al hacer clic fuera
       document.addEventListener("click", (e) => {
         if (!e.target.closest("#search-cliente") && !e.target.closest("#dropdown-cliente")) {
           document.getElementById("dropdown-cliente").classList.add("hidden");
@@ -521,9 +519,7 @@
       }
     }
 
-    // LISTAS EN MAESTROS (CON EDITAR Y ELIMINAR)
     function cargarMaestrosUI() {
-      // Clientes Maestro
       const listCli = document.getElementById("lista-maestro-clientes");
       listCli.innerHTML = '';
       clientesList.forEach((c) => {
@@ -538,7 +534,6 @@
           </div>`;
       });
 
-      // Patentes Maestro
       const listPat = document.getElementById("lista-maestro-patentes");
       listPat.innerHTML = '';
       patentesList.forEach((p) => {
@@ -554,7 +549,6 @@
           </div>`;
       });
 
-      // Materiales Maestro
       const listMat = document.getElementById("lista-maestro-materiales");
       listMat.innerHTML = '';
       materialesList.forEach((m) => {
@@ -573,7 +567,6 @@
       });
     }
 
-    // BUSCADOR INTELIGENTE EN NUEVO REMITO (FILTRA POR TECLADO)
     function filtrarListaDesplegable(tipo, texto) {
       const q = (texto || "").toLowerCase().trim();
 
@@ -626,7 +619,6 @@
       }
     }
 
-    // ACCIONES DE SELECCIÓN
     function seleccionarClientePorId(id) {
       const c = clientesList.find(x => x.id === id);
       if (!c) return;
@@ -675,7 +667,6 @@
       if(document.querySelectorAll("#items-tbody tr").length > 1) tr.remove();
     }
 
-    // MODAL CLIENTE (ALTA Y EDICIÓN)
     function abrirModalCliente() { 
       document.getElementById("modal-cliente-titulo").innerText = "Agregar Cliente Habitual";
       document.getElementById("m-cli-id").value = "";
@@ -717,7 +708,6 @@
       cerrarModalCliente();
     }
 
-    // MODAL PATENTE (ALTA Y EDICIÓN)
     function abrirModalPatente() { 
       document.getElementById("modal-patente-titulo").innerText = "Agregar Patente & Transporte";
       document.getElementById("m-tra-id").value = "";
@@ -759,7 +749,6 @@
       cerrarModalPatente();
     }
 
-    // MODAL MATERIAL (ALTA Y EDICIÓN)
     function abrirModalMaterial() { 
       document.getElementById("modal-material-titulo").innerText = "Agregar Material Frecuente";
       document.getElementById("m-mat-id").value = "";
@@ -802,7 +791,6 @@
       }
     }
 
-    // MODAL IMPORTADOR
     function abrirModalImportador() { document.getElementById("modal-importador").classList.remove("hidden"); }
     function cerrarModalImportador() { document.getElementById("modal-importador").classList.add("hidden"); }
 
@@ -868,8 +856,29 @@
     function guardarEImprimir() { guardarRemito(true); }
 
     async function guardarRemito(dispararImpresion = false) {
-      const numero = document.getElementById("remito-numero").value.trim();
+      if (procesandoGuardado) return;
+
+      const numInput = document.getElementById("remito-numero");
+      const numero = numInput.value.trim();
       const fecha = document.getElementById("remito-fecha").value;
+
+      if (!numero) {
+        alert("Por favor indica el número de remito.");
+        return;
+      }
+
+      const existe = remitosList.some(r => r.numero === numero);
+      if (existe) {
+        const confirmar = confirm(`El remito Nº ${numero} ya existe en el historial.\n¿Deseas reimprimirlo o guardarlo igualmente? Presiona "Cancelar" para corregir el número.`);
+        if (!confirmar) return;
+      }
+
+      procesandoGuardado = true;
+      const btnGuardar = document.getElementById("btn-guardar-solo");
+      const btnImprimir = document.getElementById("btn-imprimir");
+      btnGuardar.disabled = true;
+      btnImprimir.disabled = true;
+
       const cliente = {
         razon: document.getElementById("cli-razon").value.trim(),
         localidad: document.getElementById("cli-localidad").value.trim(),
@@ -895,38 +904,62 @@
 
       const nuevoRemito = { numero, fecha, cliente, transporte, obs, items, creado: new Date().toISOString() };
 
-      if(window.cloudDB) {
-        await window.firestoreMethods.addDoc(window.firestoreMethods.collection(window.cloudDB, "remitos"), nuevoRemito);
-      }
+      try {
+        if(window.cloudDB) {
+          await window.firestoreMethods.addDoc(window.firestoreMethods.collection(window.cloudDB, "remitos"), nuevoRemito);
+        }
 
-      if(dispararImpresion) {
-        armarZonaImpresion(nuevoRemito);
-        setTimeout(() => { window.print(); }, 250);
-      } else {
-        alert("Remito guardado correctamente.");
+        const numVal = parseInt(numero, 10);
+        if (!isNaN(numVal)) {
+          numInput.value = String(numVal + 1).padStart(numero.length, "0");
+        }
+
+        if(dispararImpresion) {
+          armarZonaImpresion(nuevoRemito);
+          setTimeout(() => { window.print(); }, 250);
+        } else {
+          alert("Remito guardado correctamente.");
+        }
+      } catch (err) {
+        console.error("Error al guardar remito:", err);
+        alert("Ocurrió un error al guardar en la nube.");
+      } finally {
+        setTimeout(() => {
+          procesandoGuardado = false;
+          btnGuardar.disabled = false;
+          btnImprimir.disabled = false;
+        }, 1000);
       }
     }
 
+    // DISPOSICIÓN VERTICAL DE LOS 3 CUERPOS DE 113.33 mm CADA UNO
     function armarZonaImpresion(data) {
       const zone = document.getElementById("printable-voucher-zone");
       const ox = parseFloat(document.getElementById("offset-x").value) || 0;
       const oy = parseFloat(document.getElementById("offset-y").value) || 0;
 
-      let html = `<div style="position: absolute; left: ${ox}mm; top: ${oy}mm; width: 220mm;">`;
+      let html = `<div style="position: absolute; left: ${ox}mm; top: ${oy}mm; width: 220mm; height: 340mm; font-family: 'Courier New', Courier, monospace; font-size: 11px;">`;
 
       for(let i = 0; i < 3; i++) {
         const topBase = i * 113.33;
         html += `
-          <div style="position: absolute; top: ${topBase}mm; left: 0; width: 220mm; height: 113.33mm; font-size: 11px; line-height: 1.2;">
+          <div style="position: absolute; top: ${topBase}mm; left: 0; width: 220mm; height: 113.33mm; overflow: hidden;">
+            <!-- FECHA -->
             <div style="position: absolute; top: 14mm; left: 168mm; font-weight: bold;">${data.fecha}</div>
-            <div style="position: absolute; top: 27mm; left: 24mm; font-weight: bold; width: 100mm;">${data.cliente.razon}</div>
-            <div style="position: absolute; top: 27mm; left: 155mm;">${data.cliente.localidad}</div>
-            <div style="position: absolute; top: 32mm; left: 24mm; width: 100mm;">${data.cliente.domicilio}</div>
+
+            <!-- CLIENTE -->
+            <div style="position: absolute; top: 27mm; left: 24mm; font-weight: bold; width: 110mm; white-space: nowrap; overflow: hidden;">${data.cliente.razon}</div>
+            <div style="position: absolute; top: 27mm; left: 155mm; white-space: nowrap;">${data.cliente.localidad}</div>
+            <div style="position: absolute; top: 32mm; left: 24mm; width: 110mm; white-space: nowrap; overflow: hidden;">${data.cliente.domicilio}</div>
             <div style="position: absolute; top: 32mm; left: 155mm; font-weight: bold;">${data.cliente.cuit}</div>
+
+            <!-- TRANSPORTE -->
             <div style="position: absolute; top: 38mm; left: 24mm; font-weight: bold;">${data.transporte.patente}</div>
             <div style="position: absolute; top: 38mm; left: 155mm;">${data.transporte.cuit}</div>
-            <div style="position: absolute; top: 43mm; left: 28mm; width: 100mm;">${data.transporte.transportista}</div>
-            <div style="position: absolute; top: 47mm; left: 24mm;">${data.transporte.domicilio}</div>
+            <div style="position: absolute; top: 43mm; left: 28mm; width: 110mm; white-space: nowrap; overflow: hidden;">${data.transporte.transportista}</div>
+            <div style="position: absolute; top: 47mm; left: 24mm; width: 110mm; white-space: nowrap; overflow: hidden;">${data.transporte.domicilio}</div>
+
+            <!-- MERCADERIA / ITEMS -->
             <div style="position: absolute; top: 57mm; left: 15mm; width: 190mm;">
               ${data.items.map(it => `
                 <div style="display: flex; margin-bottom: 2mm;">
@@ -935,7 +968,9 @@
                 </div>
               `).join('')}
             </div>
-            <div style="position: absolute; top: 96mm; left: 35mm; width: 120mm; font-weight: bold;">${data.obs || ''}</div>
+
+            <!-- OBSERVACIONES -->
+            <div style="position: absolute; top: 96mm; left: 35mm; width: 130mm; font-weight: bold;">${data.obs || ''}</div>
           </div>
         `;
       }
@@ -944,7 +979,7 @@
       zone.innerHTML = html;
     }
 
-    // HISTORIAL & EXCEL
+    // HISTORIAL
     function cargarHistorialUI() {
       const tbody = document.getElementById("historial-tbody");
       document.getElementById("badge-count").innerText = remitosList.length;
@@ -963,7 +998,10 @@
             <td class="py-3 px-4 font-mono font-bold text-blue-700">${r.transporte?.patente || "-"}</td>
             <td class="py-3 px-4 text-xs">${matResumen}</td>
             <td class="py-3 px-4 text-center">
-              <button onclick='reimprimirRemito(${JSON.stringify(r)})' class="bg-cyan-100 text-cyan-800 hover:bg-cyan-200 text-xs px-2.5 py-1 rounded font-bold">Imprimir</button>
+              <div class="flex items-center justify-center gap-2">
+                <button onclick='reimprimirRemito(${JSON.stringify(r)})' class="bg-cyan-100 text-cyan-800 hover:bg-cyan-200 text-xs px-2.5 py-1 rounded font-bold">Imprimir</button>
+                <button onclick="borrarRegistro('remitos', '${r.id}')" title="Eliminar remito duplicado" class="text-slate-400 hover:text-rose-600 text-base font-bold">🗑️</button>
+              </div>
             </td>
           </tr>`;
       });
