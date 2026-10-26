@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ranelagh Construcciones S.A. - Remitos Preimpresos</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- jsPDF para control estricto de orientación y milímetros -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, addDoc, setDoc, onSnapshot, query, orderBy, deleteDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -32,10 +29,41 @@
       console.warn("Error iniciando Firebase:", err);
     }
   </script>
+  <style>
+    @media print {
+      html, body {
+        width: 220mm !important;
+        height: 335mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+      }
+      body * { visibility: hidden !important; }
+      #printable-voucher-zone, #printable-voucher-zone * { visibility: visible !important; }
+      #printable-voucher-zone {
+        display: block !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 220mm !important;
+        height: 335mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        page-break-after: avoid !important;
+        page-break-inside: avoid !important;
+      }
+      .no-print { display: none !important; }
+      @page {
+        size: 220mm 340mm portrait;
+        margin: 0mm !important;
+      }
+    }
+  </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
 
-  <nav class="bg-slate-900 text-white px-6 py-4 flex flex-wrap justify-between items-center shadow">
+  <nav class="bg-slate-900 text-white px-6 py-4 flex flex-wrap justify-between items-center shadow no-print">
     <div class="flex items-center gap-3">
       <div class="w-10 h-10 rounded bg-cyan-700 font-serif font-black flex items-center justify-center text-xl">R</div>
       <div>
@@ -59,7 +87,7 @@
   </nav>
 
   <!-- PESTAÑA 1: NUEVO REMITO -->
-  <main id="view-emitir" class="max-w-6xl mx-auto p-6">
+  <main id="view-emitir" class="max-w-6xl mx-auto p-6 no-print">
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
       <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex justify-between items-center flex-wrap gap-4">
         <div>
@@ -184,14 +212,14 @@
       <!-- BOTONES ACCIÓN Y CALIBRACIÓN -->
       <div class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex justify-between items-center flex-wrap gap-4">
         <div class="flex items-center gap-3">
-          <label class="text-xs font-semibold text-slate-600">Calibración Fina:</label>
-          <span class="text-xs text-slate-500">Offset X: <input type="number" id="offset-x" value="0" step="1" class="w-14 border rounded px-1.5 py-0.5 text-center font-mono"> mm</span>
-          <span class="text-xs text-slate-500">Offset Y: <input type="number" id="offset-y" value="0" step="1" class="w-14 border rounded px-1.5 py-0.5 text-center font-mono"> mm</span>
+          <label class="text-xs font-semibold text-slate-600">Ajuste Fino Milimétrico:</label>
+          <span class="text-xs text-slate-500">Horizontal (X): <input type="number" id="offset-x" value="0" step="1" class="w-14 border rounded px-1.5 py-0.5 text-center font-mono"> mm</span>
+          <span class="text-xs text-slate-500">Vertical (Y): <input type="number" id="offset-y" value="0" step="1" class="w-14 border rounded px-1.5 py-0.5 text-center font-mono"> mm</span>
         </div>
         <div class="flex gap-3">
           <button id="btn-guardar-solo" onclick="guardarRemito(false)" class="bg-slate-700 hover:bg-slate-800 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow-sm transition-all">Guardar sin Imprimir</button>
           <button id="btn-imprimir" onclick="guardarEImprimir()" class="bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold px-6 py-2 rounded-lg text-sm shadow flex items-center gap-2 transition-all">
-            <span>🖨️</span> <span id="txt-btn-imprimir">Imprimir Remito (Alineación Exacta)</span>
+            <span>🖨️</span> <span id="txt-btn-imprimir">Mandar a Imprimir en Brother</span>
           </button>
         </div>
       </div>
@@ -199,7 +227,7 @@
   </main>
 
   <!-- PESTAÑA 2: HISTORIAL -->
-  <main id="view-historial" class="max-w-6xl mx-auto p-6 hidden">
+  <main id="view-historial" class="max-w-6xl mx-auto p-6 hidden no-print">
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
       <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
         <div>
@@ -236,7 +264,7 @@
   </main>
 
   <!-- PESTAÑA 3: PRECARGAS & MAESTROS -->
-  <main id="view-maestros" class="max-w-6xl mx-auto p-6 hidden">
+  <main id="view-maestros" class="max-w-6xl mx-auto p-6 hidden no-print">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
         <div class="flex justify-between items-center mb-4">
@@ -271,7 +299,7 @@
   </main>
 
   <!-- MODALES MAESTROS -->
-  <div id="modal-cliente" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden">
+  <div id="modal-cliente" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden no-print">
     <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
       <div class="flex justify-between items-center mb-4">
         <h3 id="modal-cliente-titulo" class="font-bold text-base text-slate-800">Agregar Cliente</h3>
@@ -303,7 +331,7 @@
     </div>
   </div>
 
-  <div id="modal-patente" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden">
+  <div id="modal-patente" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden no-print">
     <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
       <div class="flex justify-between items-center mb-4">
         <h3 id="modal-patente-titulo" class="font-bold text-base text-slate-800">Agregar Patente</h3>
@@ -335,7 +363,7 @@
     </div>
   </div>
 
-  <div id="modal-material" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden">
+  <div id="modal-material" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden no-print">
     <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 border border-slate-200">
       <div class="flex justify-between items-center mb-4">
         <h3 id="modal-material-titulo" class="font-bold text-base text-slate-800">Agregar Material</h3>
@@ -364,7 +392,7 @@
     </div>
   </div>
 
-  <div id="modal-importador" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden">
+  <div id="modal-importador" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden no-print">
     <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 border border-slate-200">
       <div class="flex justify-between items-center mb-3">
         <h3 class="font-bold text-lg text-slate-800">Importación Masiva de Patentes</h3>
@@ -386,6 +414,9 @@
       </div>
     </div>
   </div>
+
+  <!-- ZONA DE IMPRESIÓN (ROTADA 90° EXACTOS PARA ENTRADA POR BANDEJA ANGOSTA) -->
+  <div id="printable-voucher-zone" style="display:none; width: 220mm; height: 335mm; position: relative;"></div>
 
   <script>
     let remitosList = [];
@@ -811,7 +842,7 @@
 
       btnGuardar.disabled = true;
       btnImprimir.disabled = true;
-      txtImprimir.innerText = "Generando...";
+      txtImprimir.innerText = "Preparando...";
 
       const cliente = {
         razon: document.getElementById("cli-razon").value.trim(),
@@ -852,7 +883,8 @@
         }
 
         if(dispararImpresion) {
-          generarPDFImpresion(nuevoRemito);
+          armarZonaImpresion(nuevoRemito);
+          setTimeout(() => { window.print(); }, 250);
         } else {
           alert("Remito guardado correctamente.");
         }
@@ -864,72 +896,48 @@
           guardandoBloqueado = false;
           btnGuardar.disabled = false;
           btnImprimir.disabled = false;
-          txtImprimir.innerText = "Imprimir Remito (Alineación Exacta)";
+          txtImprimir.innerText = "Mandar a Imprimir en Brother";
         }, 1200);
       }
     }
 
-    // GENERADOR PDF ROTADO 90° EXACTO PARA ENTRADA POR BANDEJA ANGOSTA
-    function generarPDFImpresion(data) {
-      const { jsPDF } = window.jspdf;
-      
-      // Hoja de 216 mm (ancho bandeja) x 340 mm (largo continuo) en vertical
-      const doc = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: [216, 340]
-      });
-
+    // DISPOSICIÓN ROTADA 90° CON ENTRADA DE COSTADO Y MEMBRETE A LA IZQUIERDA
+    function armarZonaImpresion(data) {
+      const zone = document.getElementById("printable-voucher-zone");
       const ox = parseFloat(document.getElementById("offset-x").value) || 0;
       const oy = parseFloat(document.getElementById("offset-y").value) || 0;
 
-      doc.setFont("courier", "bold");
-      doc.setFontSize(10);
+      // El contenedor rota 90° para que al salir por la bandeja angosta quede perfectamente apaisado
+      let html = `<div style="position: absolute; left: ${ox}mm; top: ${oy}mm; width: 335mm; height: 216mm; transform: rotate(-90deg) translate(-216mm, 0); transform-origin: top left; font-family: 'Courier New', Courier, monospace; font-size: 11px;">`;
 
-      // Función auxiliar para imprimir con rotación de 90° (membrete a la izquierda)
-      function writeRotated(text, xOriginal, yOriginal) {
-        if (!text) return;
-        // Transformación matemática de coordenadas a la orientación de la impresora
-        const xRot = yOriginal + oy;
-        const yRot = (216 - xOriginal) - ox;
-        doc.text(String(text), xRot, yRot, { angle: 90 });
+      for(let i = 0; i < 3; i++) {
+        const topBase = i * 111.5; // Ajuste milimétrico para 3 secciones exactas sin salto
+        html += `
+          <div style="position: absolute; top: ${topBase}mm; left: 0; width: 335mm; height: 111.5mm; overflow: hidden;">
+            <div style="position: absolute; top: 14mm; left: 168mm; font-weight: bold;">${data.fecha}</div>
+            <div style="position: absolute; top: 27mm; left: 24mm; font-weight: bold; width: 110mm; white-space: nowrap; overflow: hidden;">${data.cliente.razon}</div>
+            <div style="position: absolute; top: 27mm; left: 155mm; white-space: nowrap;">${data.cliente.localidad}</div>
+            <div style="position: absolute; top: 32mm; left: 24mm; width: 110mm; white-space: nowrap; overflow: hidden;">${data.cliente.domicilio}</div>
+            <div style="position: absolute; top: 32mm; left: 155mm; font-weight: bold;">${data.cliente.cuit}</div>
+            <div style="position: absolute; top: 38mm; left: 24mm; font-weight: bold;">${data.transporte.patente}</div>
+            <div style="position: absolute; top: 38mm; left: 155mm;">${data.transporte.cuit}</div>
+            <div style="position: absolute; top: 43mm; left: 28mm; width: 110mm; white-space: nowrap; overflow: hidden;">${data.transporte.transportista}</div>
+            <div style="position: absolute; top: 47mm; left: 24mm; width: 110mm; white-space: nowrap; overflow: hidden;">${data.transporte.domicilio}</div>
+            <div style="position: absolute; top: 57mm; left: 15mm; width: 190mm;">
+              ${data.items.map(it => `
+                <div style="display: flex; margin-bottom: 2mm;">
+                  <div style="width: 25mm; font-weight: bold;">${it.cant} ${it.unidad}</div>
+                  <div style="width: 160mm;">${it.desc}</div>
+                </div>
+              `).join('')}
+            </div>
+            <div style="position: absolute; top: 96mm; left: 35mm; width: 130mm; font-weight: bold;">${data.obs || ''}</div>
+          </div>
+        `;
       }
 
-      // Impresión de los 3 cuerpos a lo largo de los 340 mm
-      for (let i = 0; i < 3; i++) {
-        const topBase = i * 113.33;
-
-        // Fecha
-        writeRotated(data.fecha || "", 168, topBase + 16);
-
-        // Cliente
-        writeRotated(data.cliente.razon || "", 24, topBase + 29);
-        writeRotated(data.cliente.localidad || "", 155, topBase + 29);
-        writeRotated(data.cliente.domicilio || "", 24, topBase + 34);
-        writeRotated(data.cliente.cuit || "", 155, topBase + 34);
-
-        // Transporte
-        writeRotated(data.transporte.patente || "", 24, topBase + 40);
-        writeRotated(data.transporte.cuit || "", 155, topBase + 40);
-        writeRotated(data.transporte.transportista || "", 28, topBase + 45);
-        writeRotated(data.transporte.domicilio || "", 24, topBase + 49);
-
-        // Mercadería
-        let itemY = topBase + 59;
-        if (data.items && data.items.length > 0) {
-          data.items.forEach(it => {
-            writeRotated(`${it.cant} ${it.unidad}`, 15, itemY);
-            writeRotated(it.desc || "", 42, itemY);
-            itemY += 5;
-          });
-        }
-
-        // Observaciones
-        writeRotated(data.obs || "", 35, topBase + 98);
-      }
-
-      doc.autoPrint();
-      window.open(doc.output("bloburl"), "_blank");
+      html += `</div>`;
+      zone.innerHTML = html;
     }
 
     function cargarHistorialUI() {
@@ -951,12 +959,17 @@
             <td class="py-3 px-4 text-xs">${matResumen}</td>
             <td class="py-3 px-4 text-center">
               <div class="flex items-center justify-center gap-2">
-                <button onclick='generarPDFImpresion(${JSON.stringify(r)})' class="bg-cyan-100 text-cyan-800 hover:bg-cyan-200 text-xs px-2.5 py-1 rounded font-bold">Imprimir PDF</button>
+                <button onclick='reimprimirRemito(${JSON.stringify(r)})' class="bg-cyan-100 text-cyan-800 hover:bg-cyan-200 text-xs px-2.5 py-1 rounded font-bold">Imprimir</button>
                 <button onclick="borrarRegistro('remitos', '${r.id}')" title="Eliminar remito" class="text-slate-400 hover:text-rose-600 text-base font-bold">🗑️</button>
               </div>
             </td>
           </tr>`;
       });
+    }
+
+    function reimprimirRemito(r) {
+      armarZonaImpresion(r);
+      setTimeout(() => { window.print(); }, 250);
     }
 
     function exportarExcelCSV() {
