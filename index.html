@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ranelagh Construcciones S.A. - Remitos Preimpresos</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- jsPDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -32,6 +30,42 @@
       console.warn("Error iniciando Firebase:", err);
     }
   </script>
+
+  <style>
+    @media print {
+      html, body {
+        width: 220mm !important;
+        height: 335mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+      }
+      body * {
+        visibility: hidden !important;
+      }
+      #printable-voucher-zone, #printable-voucher-zone * {
+        visibility: visible !important;
+      }
+      #printable-voucher-zone {
+        display: block !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 220mm !important;
+        height: 335mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      @page {
+        size: 220mm 340mm portrait;
+        margin: 0mm !important;
+      }
+    }
+  </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
 
@@ -59,12 +93,12 @@
   </nav>
 
   <!-- PESTAÑA 1: NUEVO REMITO -->
-  <main id="view-emitir" class="max-w-6xl mx-auto p-6">
+  <main id="view-emitir" class="max-w-6xl mx-auto p-6 no-print">
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
       <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex justify-between items-center flex-wrap gap-4">
         <div>
           <h2 class="font-bold text-slate-800 text-lg">Emisión de Remito Sobre Formulario Continuo</h2>
-          <p class="text-xs text-slate-500">Imprime únicamente los textos sobre los casilleros del papel preimpreso.</p>
+          <p class="text-xs text-slate-500">Imprime directamente sobre los renglones del formulario continuo sin descargar archivos.</p>
         </div>
         <div class="flex items-center gap-3">
           <label class="text-xs font-semibold text-slate-600">Número Impreso en Papel:</label>
@@ -191,7 +225,7 @@
         <div class="flex gap-3">
           <button id="btn-guardar-solo" onclick="guardarRemito(false)" class="bg-slate-700 hover:bg-slate-800 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow-sm transition-all">Guardar sin Imprimir</button>
           <button id="btn-imprimir" onclick="guardarEImprimir()" class="bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold px-6 py-2 rounded-lg text-sm shadow flex items-center gap-2 transition-all">
-            <span>📄</span> <span id="txt-btn-imprimir">Descargar PDF Remito</span>
+            <span>🖨️</span> <span id="txt-btn-imprimir">Imprimir Remito Directo</span>
           </button>
         </div>
       </div>
@@ -199,7 +233,7 @@
   </main>
 
   <!-- PESTAÑA 2: HISTORIAL -->
-  <main id="view-historial" class="max-w-6xl mx-auto p-6 hidden">
+  <main id="view-historial" class="max-w-6xl mx-auto p-6 hidden no-print">
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
       <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
         <div>
@@ -253,7 +287,7 @@
   </main>
 
   <!-- PESTAÑA 3: PRECARGAS & MAESTROS -->
-  <main id="view-maestros" class="max-w-6xl mx-auto p-6 hidden">
+  <main id="view-maestros" class="max-w-6xl mx-auto p-6 hidden no-print">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
         <div class="flex justify-between items-center mb-4">
@@ -288,7 +322,7 @@
   </main>
 
   <!-- MODALES MAESTROS -->
-  <div id="modal-cliente" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden">
+  <div id="modal-cliente" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden no-print">
     <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
       <div class="flex justify-between items-center mb-4">
         <h3 id="modal-cliente-titulo" class="font-bold text-base text-slate-800">Agregar Cliente</h3>
@@ -320,7 +354,7 @@
     </div>
   </div>
 
-  <div id="modal-patente" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden">
+  <div id="modal-patente" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden no-print">
     <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
       <div class="flex justify-between items-center mb-4">
         <h3 id="modal-patente-titulo" class="font-bold text-base text-slate-800">Agregar Patente</h3>
@@ -352,7 +386,7 @@
     </div>
   </div>
 
-  <div id="modal-material" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden">
+  <div id="modal-material" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden no-print">
     <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 border border-slate-200">
       <div class="flex justify-between items-center mb-4">
         <h3 id="modal-material-titulo" class="font-bold text-base text-slate-800">Agregar Material</h3>
@@ -381,7 +415,7 @@
     </div>
   </div>
 
-  <div id="modal-importador" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden">
+  <div id="modal-importador" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden no-print">
     <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 border border-slate-200">
       <div class="flex justify-between items-center mb-3">
         <h3 class="font-bold text-lg text-slate-800">Importación Masiva de Patentes</h3>
@@ -403,6 +437,9 @@
       </div>
     </div>
   </div>
+
+  <!-- LIENZO DIRECTO DE IMPRESIÓN (SIN DESCARGA DE ARCHIVOS) -->
+  <div id="printable-voucher-zone" style="display:none; width: 220mm; height: 335mm; position: relative;"></div>
 
   <script>
     let remitosList = [];
@@ -865,7 +902,7 @@
         return;
       }
 
-      // Validación estricta anti-duplicados
+      // Validación anti-duplicados estricta
       const existeEnMemoria = remitosList.some(r => String(r.numero).trim() === numero);
       if (existeEnMemoria) {
         alert(`ERROR: El remito Nº ${numero} ya existe en el sistema. Cambia el número antes de guardar.`);
@@ -893,7 +930,7 @@
 
       btnGuardar.disabled = true;
       btnImprimir.disabled = true;
-      txtImprimir.innerText = "Procesando...";
+      txtImprimir.innerText = "Enviando a Impresora...";
 
       const cliente = {
         razon: document.getElementById("cli-razon").value.trim(),
@@ -933,7 +970,8 @@
         }
 
         if(dispararImpresion) {
-          generarPDFImpresion(nuevoRemito);
+          armarZonaImpresionDirecta(nuevoRemito);
+          setTimeout(() => { window.print(); }, 200);
         } else {
           alert("Remito guardado correctamente.");
         }
@@ -945,66 +983,47 @@
           guardandoBloqueado = false;
           btnGuardar.disabled = false;
           btnImprimir.disabled = false;
-          txtImprimir.innerText = "Descargar PDF Remito";
+          txtImprimir.innerText = "Imprimir Remito Directo";
         }, 1000);
       }
     }
 
-    // GENERADOR PDF GIRADO 90° EXACTO
-    // Papel 220 x 340 mm alimentado por borde angosto con membrete a la izquierda
-    function generarPDFImpresion(data) {
-      const { jsPDF } = window.jspdf;
-      
-      const doc = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: [220, 340]
-      });
-
+    // IMPRESIÓN DIRECTA SIN DESCARGA (220 mm ancho x 340 mm alto)
+    function armarZonaImpresionDirecta(data) {
+      const zone = document.getElementById("printable-voucher-zone");
       const ox = parseFloat(document.getElementById("offset-x").value) || 0;
       const oy = parseFloat(document.getElementById("offset-y").value) || 0;
 
-      doc.setFont("courier", "bold");
-      doc.setFontSize(10);
+      let html = `<div style="position: absolute; left: ${ox}mm; top: ${oy}mm; width: 220mm; height: 335mm; font-family: 'Courier New', Courier, monospace; font-size: 11px;">`;
 
-      function printCell(text, xRemito, yRemito, cuerpoIndex) {
-        if (!text) return;
-        const avancePliego = (cuerpoIndex * 113.33) + yRemito + oy;
-        const avanceAncho = (220 - xRemito) + ox;
-        doc.text(String(text), avancePliego, avanceAncho, { angle: 90 });
+      for(let i = 0; i < 3; i++) {
+        const topBase = i * 111.5;
+        html += `
+          <div style="position: absolute; top: ${topBase}mm; left: 0; width: 220mm; height: 111.5mm; overflow: hidden;">
+            <div style="position: absolute; top: 15mm; left: 168mm; font-weight: bold;">${data.fecha || ''}</div>
+            <div style="position: absolute; top: 28mm; left: 24mm; font-weight: bold; width: 110mm; white-space: nowrap; overflow: hidden;">${data.cliente.razon || ''}</div>
+            <div style="position: absolute; top: 28mm; left: 155mm; white-space: nowrap;">${data.cliente.localidad || ''}</div>
+            <div style="position: absolute; top: 34mm; left: 24mm; width: 110mm; white-space: nowrap; overflow: hidden;">${data.cliente.domicilio || ''}</div>
+            <div style="position: absolute; top: 34mm; left: 155mm; font-weight: bold;">${data.cliente.cuit || ''}</div>
+            <div style="position: absolute; top: 40mm; left: 24mm; font-weight: bold;">${data.transporte.patente || ''}</div>
+            <div style="position: absolute; top: 40mm; left: 155mm;">${data.transporte.cuit || ''}</div>
+            <div style="position: absolute; top: 45mm; left: 28mm; width: 110mm; white-space: nowrap; overflow: hidden;">${data.transporte.transportista || ''}</div>
+            <div style="position: absolute; top: 49mm; left: 24mm; width: 110mm; white-space: nowrap; overflow: hidden;">${data.transporte.domicilio || ''}</div>
+            <div style="position: absolute; top: 59mm; left: 15mm; width: 190mm;">
+              ${(data.items || []).map(it => `
+                <div style="display: flex; margin-bottom: 2mm;">
+                  <div style="width: 25mm; font-weight: bold;">${it.cant} ${it.unidad}</div>
+                  <div style="width: 160mm;">${it.desc}</div>
+                </div>
+              `).join('')}
+            </div>
+            <div style="position: absolute; top: 98mm; left: 35mm; width: 130mm; font-weight: bold;">${data.obs || ''}</div>
+          </div>
+        `;
       }
 
-      for (let i = 0; i < 3; i++) {
-        // FECHA
-        printCell(data.fecha || "", 170, 16, i);
-
-        // CLIENTE
-        printCell(data.cliente?.razon || "", 25, 28, i);
-        printCell(data.cliente?.localidad || "", 155, 28, i);
-        printCell(data.cliente?.domicilio || "", 25, 34, i);
-        printCell(data.cliente?.cuit || "", 155, 34, i);
-
-        // TRANSPORTE
-        printCell(data.transporte?.patente || "", 25, 40, i);
-        printCell(data.transporte?.cuit || "", 155, 40, i);
-        printCell(data.transporte?.transportista || "", 28, 45, i);
-        printCell(data.transporte?.domicilio || "", 25, 49, i);
-
-        // MERCADERÍA
-        let yItem = 59;
-        if (data.items && data.items.length > 0) {
-          data.items.forEach(it => {
-            printCell(`${it.cant} ${it.unidad}`, 15, yItem, i);
-            printCell(it.desc || "", 45, yItem, i);
-            yItem += 6;
-          });
-        }
-
-        // OBSERVACIONES
-        printCell(data.obs || "", 35, 98, i);
-      }
-
-      doc.save(`Remito_${data.numero || "Ranelagh"}.pdf`);
+      html += `</div>`;
+      zone.innerHTML = html;
     }
 
     function renderizarHistorial(lista) {
@@ -1026,12 +1045,17 @@
             <td class="py-3 px-4 text-xs">${matResumen}</td>
             <td class="py-3 px-4 text-center">
               <div class="flex items-center justify-center gap-2">
-                <button onclick='generarPDFImpresion(${JSON.stringify(r)})' class="bg-cyan-100 text-cyan-800 hover:bg-cyan-200 text-xs px-2.5 py-1 rounded font-bold">Descargar PDF</button>
+                <button onclick='reimprimirRemitoDirecto(${JSON.stringify(r)})' class="bg-cyan-100 text-cyan-800 hover:bg-cyan-200 text-xs px-2.5 py-1 rounded font-bold">Imprimir</button>
                 <button onclick="borrarRegistro('remitos', '${r.id}')" title="Eliminar remito" class="text-slate-400 hover:text-rose-600 text-base font-bold">🗑️</button>
               </div>
             </td>
           </tr>`;
       });
+    }
+
+    function reimprimirRemitoDirecto(r) {
+      armarZonaImpresionDirecta(r);
+      setTimeout(() => { window.print(); }, 200);
     }
 
     function filtrarHistorialLocal() {
