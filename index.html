@@ -865,7 +865,7 @@
         return;
       }
 
-      // Comprobación anti-duplicados estricta
+      // Validación estricta anti-duplicados
       const existeEnMemoria = remitosList.some(r => String(r.numero).trim() === numero);
       if (existeEnMemoria) {
         alert(`ERROR: El remito Nº ${numero} ya existe en el sistema. Cambia el número antes de guardar.`);
@@ -951,8 +951,7 @@
     }
 
     // GENERADOR PDF GIRADO 90° EXACTO
-    // El papel mide 220 mm de ancho x 340 mm de alto al entrar en la Brother.
-    // Los textos se escriben horizontalmente a lo ancho (220 mm) con el membrete apuntando a la izquierda.
+    // Papel 220 x 340 mm alimentado por borde angosto con membrete a la izquierda
     function generarPDFImpresion(data) {
       const { jsPDF } = window.jspdf;
       
@@ -968,14 +967,10 @@
       doc.setFont("courier", "bold");
       doc.setFontSize(10);
 
-      // Función que ubica el texto girado 90° de manera que quede horizontal respecto al pliego preimpreso
-      // xRemito: posición de izquierda a derecha en el remito (0 a 220 mm)
-      // yRemito: posición de arriba hacia abajo dentro de cada cuerpo (0 a 113.33 mm)
       function printCell(text, xRemito, yRemito, cuerpoIndex) {
         if (!text) return;
         const avancePliego = (cuerpoIndex * 113.33) + yRemito + oy;
         const avanceAncho = (220 - xRemito) + ox;
-        // Al rotar 90°, el eje X del PDF recibe el avance del pliego y el eje Y recibe el ancho invertido
         doc.text(String(text), avancePliego, avanceAncho, { angle: 90 });
       }
 
