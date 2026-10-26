@@ -97,14 +97,16 @@
             <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
               <span class="w-2 h-2 rounded-full bg-cyan-600"></span> Señor (es) / Cliente
             </h3>
-            <select id="select-cliente" onchange="seleccionarCliente(this.value)" class="text-xs border border-cyan-300 rounded px-2 py-1 bg-white text-cyan-900 font-medium outline-none">
-              <option value="">-- Cargar desde clientes guardados --</option>
-            </select>
+            <!-- BUSCADOR CON FILTRO CLIENTES -->
+            <div class="relative w-64">
+              <input type="text" id="search-cliente" oninput="filtrarListaDesplegable('cliente', this.value)" onfocus="filtrarListaDesplegable('cliente', this.value)" placeholder="🔍 Buscar cliente por nombre..." class="text-xs border border-cyan-300 rounded px-2.5 py-1.5 w-full bg-white text-cyan-900 font-medium outline-none focus:ring-2 focus:ring-cyan-600">
+              <div id="dropdown-cliente" class="hidden absolute left-0 right-0 top-8 bg-white border border-slate-300 rounded shadow-xl max-h-48 overflow-y-auto z-30 text-xs divide-y divide-slate-100"></div>
+            </div>
           </div>
           <div class="space-y-3 text-sm">
             <div>
               <label class="text-xs text-slate-500 block">Razón Social (Señor/es):</label>
-              <input type="text" id="cli-razon" placeholder="Nombre de la empresa o cliente" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm uppercase">
+              <input type="text" id="cli-razon" placeholder="Nombre de la empresa o cliente" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm uppercase font-semibold">
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
@@ -129,9 +131,11 @@
             <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
               <span class="w-2 h-2 rounded-full bg-blue-600"></span> Transporte / Patente
             </h3>
-            <select id="select-patente" onchange="seleccionarPatente(this.value)" class="text-xs border border-blue-300 rounded px-2 py-1 bg-white text-blue-900 font-medium outline-none">
-              <option value="">-- Seleccionar Patente Guardada --</option>
-            </select>
+            <!-- BUSCADOR CON FILTRO PATENTES -->
+            <div class="relative w-64">
+              <input type="text" id="search-patente" oninput="filtrarListaDesplegable('patente', this.value)" onfocus="filtrarListaDesplegable('patente', this.value)" placeholder="🔍 Escribe patente o fletero..." class="text-xs border border-blue-300 rounded px-2.5 py-1.5 w-full bg-white text-blue-900 font-medium outline-none focus:ring-2 focus:ring-blue-600">
+              <div id="dropdown-patente" class="hidden absolute left-0 right-0 top-8 bg-white border border-slate-300 rounded shadow-xl max-h-48 overflow-y-auto z-30 text-xs divide-y divide-slate-100"></div>
+            </div>
           </div>
           <div class="space-y-3 text-sm">
             <div class="grid grid-cols-2 gap-3">
@@ -164,10 +168,12 @@
               <span class="w-2 h-2 rounded-full bg-emerald-600"></span> Mercadería / Materiales
             </h3>
             <div class="flex items-center gap-2">
-              <select id="select-material" onchange="insertarMaterial(this.value)" class="text-xs border border-emerald-300 rounded px-2 py-1 bg-white text-emerald-900 font-medium outline-none">
-                <option value="">-- Insertar material precargado --</option>
-              </select>
-              <button onclick="agregarFilaItem()" class="text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold px-3 py-1 rounded">+ Agregar Renglón</button>
+              <!-- BUSCADOR CON FILTRO MATERIALES -->
+              <div class="relative w-64">
+                <input type="text" id="search-material" oninput="filtrarListaDesplegable('material', this.value)" onfocus="filtrarListaDesplegable('material', this.value)" placeholder="🔍 Escribe material a insertar..." class="text-xs border border-emerald-300 rounded px-2.5 py-1.5 w-full bg-white text-emerald-900 font-medium outline-none focus:ring-2 focus:ring-emerald-600">
+                <div id="dropdown-material" class="hidden absolute left-0 right-0 top-8 bg-white border border-slate-300 rounded shadow-xl max-h-48 overflow-y-auto z-30 text-xs divide-y divide-slate-100"></div>
+              </div>
+              <button onclick="agregarFilaItem()" class="text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold px-3 py-1.5 rounded">+ Agregar Renglón</button>
             </div>
           </div>
           <table class="w-full text-left text-sm">
@@ -440,6 +446,19 @@
 
     window.addEventListener("DOMContentLoaded", () => {
       document.getElementById("remito-fecha").valueAsDate = new Date();
+
+      // Cerrar listas desplegables al hacer clic fuera
+      document.addEventListener("click", (e) => {
+        if (!e.target.closest("#search-cliente") && !e.target.closest("#dropdown-cliente")) {
+          document.getElementById("dropdown-cliente").classList.add("hidden");
+        }
+        if (!e.target.closest("#search-patente") && !e.target.closest("#dropdown-patente")) {
+          document.getElementById("dropdown-patente").classList.add("hidden");
+        }
+        if (!e.target.closest("#search-material") && !e.target.closest("#dropdown-material")) {
+          document.getElementById("dropdown-material").classList.add("hidden");
+        }
+      });
     });
 
     window.addEventListener("firebase-ready", () => {
@@ -502,14 +521,12 @@
       }
     }
 
+    // LISTAS EN MAESTROS (CON EDITAR Y ELIMINAR)
     function cargarMaestrosUI() {
-      // Clientes Select & List
-      const selCli = document.getElementById("select-cliente");
-      selCli.innerHTML = '<option value="">-- Cargar desde clientes guardados --</option>';
+      // Clientes Maestro
       const listCli = document.getElementById("lista-maestro-clientes");
       listCli.innerHTML = '';
-      clientesList.forEach((c, idx) => {
-        selCli.innerHTML += `<option value="${idx}">${c.razon}</option>`;
+      clientesList.forEach((c) => {
         listCli.innerHTML += `
           <div class="border border-slate-200 rounded p-2.5 text-xs bg-slate-50 relative group">
             <div class="absolute top-2 right-2 flex items-center gap-1.5">
@@ -521,13 +538,10 @@
           </div>`;
       });
 
-      // Patentes Select & List
-      const selPat = document.getElementById("select-patente");
-      selPat.innerHTML = '<option value="">-- Seleccionar Patente Guardada --</option>';
+      // Patentes Maestro
       const listPat = document.getElementById("lista-maestro-patentes");
       listPat.innerHTML = '';
-      patentesList.forEach((p, idx) => {
-        selPat.innerHTML += `<option value="${idx}">${p.patente} - ${p.transportista || ''}</option>`;
+      patentesList.forEach((p) => {
         listPat.innerHTML += `
           <div class="border border-slate-200 rounded p-2.5 text-xs bg-slate-50 relative group">
             <div class="absolute top-2 right-2 flex items-center gap-1.5">
@@ -540,14 +554,11 @@
           </div>`;
       });
 
-      // Materiales Select & List
-      const selMat = document.getElementById("select-material");
-      selMat.innerHTML = '<option value="">-- Insertar material precargado --</option>';
+      // Materiales Maestro
       const listMat = document.getElementById("lista-maestro-materiales");
       listMat.innerHTML = '';
-      materialesList.forEach((m, idx) => {
+      materialesList.forEach((m) => {
         const descripcion = m.desc || "Material";
-        selMat.innerHTML += `<option value="${idx}">${descripcion} (${m.unidad})</option>`;
         listMat.innerHTML += `
           <div class="border border-slate-200 rounded p-2.5 text-xs bg-slate-50 flex justify-between items-center">
             <div>
@@ -560,6 +571,108 @@
             </div>
           </div>`;
       });
+    }
+
+    // BUSCADOR INTELIGENTE EN NUEVO REMITO (FILTRA POR TECLADO)
+    function filtrarListaDesplegable(tipo, texto) {
+      const q = (texto || "").toLowerCase().trim();
+
+      if (tipo === 'cliente') {
+        const drop = document.getElementById("dropdown-cliente");
+        const filtrados = clientesList.filter(c => (c.razon || "").toLowerCase().includes(q) || (c.cuit || "").toLowerCase().includes(q));
+        if (filtrados.length === 0) {
+          drop.innerHTML = '<div class="p-2.5 text-slate-400 text-center">No hay coincidencias</div>';
+        } else {
+          drop.innerHTML = filtrados.map(c => `
+            <div onclick="seleccionarClientePorId('${c.id}')" class="p-2 hover:bg-cyan-50 cursor-pointer">
+              <div class="font-bold text-slate-800">${c.razon}</div>
+              <div class="text-[11px] text-slate-500">CUIT: ${c.cuit || '-'} | ${c.localidad || '-'}</div>
+            </div>
+          `).join('');
+        }
+        drop.classList.remove("hidden");
+      }
+
+      if (tipo === 'patente') {
+        const drop = document.getElementById("dropdown-patente");
+        const filtrados = patentesList.filter(p => (p.patente || "").toLowerCase().includes(q) || (p.transportista || "").toLowerCase().includes(q));
+        if (filtrados.length === 0) {
+          drop.innerHTML = '<div class="p-2.5 text-slate-400 text-center">No hay coincidencias</div>';
+        } else {
+          drop.innerHTML = filtrados.map(p => `
+            <div onclick="seleccionarPatentePorId('${p.id}')" class="p-2 hover:bg-blue-50 cursor-pointer">
+              <span class="font-mono font-bold text-blue-900 bg-blue-100 px-1 py-0.5 rounded mr-1">${p.patente}</span>
+              <span class="font-semibold text-slate-700">${p.transportista || ''}</span>
+            </div>
+          `).join('');
+        }
+        drop.classList.remove("hidden");
+      }
+
+      if (tipo === 'material') {
+        const drop = document.getElementById("dropdown-material");
+        const filtrados = materialesList.filter(m => (m.desc || "").toLowerCase().includes(q));
+        if (filtrados.length === 0) {
+          drop.innerHTML = '<div class="p-2.5 text-slate-400 text-center">No hay coincidencias</div>';
+        } else {
+          drop.innerHTML = filtrados.map(m => `
+            <div onclick="insertarMaterialPorId('${m.id}')" class="p-2 hover:bg-emerald-50 cursor-pointer flex justify-between items-center">
+              <span class="font-bold text-slate-800">${m.desc}</span>
+              <span class="text-[11px] text-slate-500 font-mono">${m.unidad}</span>
+            </div>
+          `).join('');
+        }
+        drop.classList.remove("hidden");
+      }
+    }
+
+    // ACCIONES DE SELECCIÓN
+    function seleccionarClientePorId(id) {
+      const c = clientesList.find(x => x.id === id);
+      if (!c) return;
+      document.getElementById("cli-razon").value = c.razon || "";
+      document.getElementById("cli-localidad").value = c.localidad || "";
+      document.getElementById("cli-domicilio").value = c.domicilio || "";
+      document.getElementById("cli-cuit").value = c.cuit || "";
+      document.getElementById("search-cliente").value = c.razon || "";
+      document.getElementById("dropdown-cliente").classList.add("hidden");
+    }
+
+    function seleccionarPatentePorId(id) {
+      const p = patentesList.find(x => x.id === id);
+      if (!p) return;
+      document.getElementById("tra-patente").value = p.patente || "";
+      document.getElementById("tra-nombre").value = p.transportista || "";
+      document.getElementById("tra-cuit").value = p.cuit || "";
+      document.getElementById("tra-domicilio").value = p.domicilio || "";
+      document.getElementById("search-patente").value = p.patente + " - " + (p.transportista || "");
+      document.getElementById("dropdown-patente").classList.add("hidden");
+    }
+
+    function insertarMaterialPorId(id) {
+      const m = materialesList.find(x => x.id === id);
+      if (!m) return;
+      agregarFilaItem(30, m.unidad, m.desc);
+      document.getElementById("search-material").value = "";
+      document.getElementById("dropdown-material").classList.add("hidden");
+    }
+
+    function agregarFilaItem(cant = 30, unidad = "m3", desc = "") {
+      const tbody = document.getElementById("items-tbody");
+      const tr = document.createElement("tr");
+      tr.className = "border-b border-slate-100";
+      tr.innerHTML = `
+        <td class="py-1.5 pr-2"><input type="number" step="any" value="${cant}" class="item-cant w-full border border-slate-300 rounded px-2 py-1 text-sm font-semibold"></td>
+        <td class="py-1.5 pr-2"><input type="text" value="${unidad}" class="item-unidad w-full border border-slate-300 rounded px-2 py-1 text-sm"></td>
+        <td class="py-1.5 pr-2"><input type="text" value="${desc}" class="item-desc w-full border border-slate-300 rounded px-2 py-1 text-sm uppercase"></td>
+        <td class="py-1.5 text-center"><button onclick="eliminarFila(this)" class="text-slate-400 hover:text-rose-600 font-bold">×</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    function eliminarFila(btn) {
+      const tr = btn.closest("tr");
+      if(document.querySelectorAll("#items-tbody tr").length > 1) tr.remove();
     }
 
     // MODAL CLIENTE (ALTA Y EDICIÓN)
@@ -687,50 +800,6 @@
       if(window.cloudDB && id) {
         await window.firestoreMethods.deleteDoc(window.firestoreMethods.doc(window.cloudDB, coleccion, id));
       }
-    }
-
-    // AUTOCOMPLETAR
-    function seleccionarCliente(idx) {
-      if(idx === "") return;
-      const c = clientesList[idx];
-      document.getElementById("cli-razon").value = c.razon || "";
-      document.getElementById("cli-localidad").value = c.localidad || "";
-      document.getElementById("cli-domicilio").value = c.domicilio || "";
-      document.getElementById("cli-cuit").value = c.cuit || "";
-    }
-
-    function seleccionarPatente(idx) {
-      if(idx === "") return;
-      const p = patentesList[idx];
-      document.getElementById("tra-patente").value = p.patente || "";
-      document.getElementById("tra-nombre").value = p.transportista || "";
-      document.getElementById("tra-cuit").value = p.cuit || "";
-      document.getElementById("tra-domicilio").value = p.domicilio || "";
-    }
-
-    function insertarMaterial(idx) {
-      if(idx === "") return;
-      const m = materialesList[idx];
-      agregarFilaItem(30, m.unidad, m.desc);
-      document.getElementById("select-material").value = "";
-    }
-
-    function agregarFilaItem(cant = 30, unidad = "m3", desc = "") {
-      const tbody = document.getElementById("items-tbody");
-      const tr = document.createElement("tr");
-      tr.className = "border-b border-slate-100";
-      tr.innerHTML = `
-        <td class="py-1.5 pr-2"><input type="number" step="any" value="${cant}" class="item-cant w-full border border-slate-300 rounded px-2 py-1 text-sm font-semibold"></td>
-        <td class="py-1.5 pr-2"><input type="text" value="${unidad}" class="item-unidad w-full border border-slate-300 rounded px-2 py-1 text-sm"></td>
-        <td class="py-1.5 pr-2"><input type="text" value="${desc}" class="item-desc w-full border border-slate-300 rounded px-2 py-1 text-sm uppercase"></td>
-        <td class="py-1.5 text-center"><button onclick="eliminarFila(this)" class="text-slate-400 hover:text-rose-600 font-bold">×</button></td>
-      `;
-      tbody.appendChild(tr);
-    }
-
-    function eliminarFila(btn) {
-      const tr = btn.closest("tr");
-      if(document.querySelectorAll("#items-tbody tr").length > 1) tr.remove();
     }
 
     // MODAL IMPORTADOR
