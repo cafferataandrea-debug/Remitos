@@ -191,7 +191,7 @@
         <div class="flex gap-3">
           <button id="btn-guardar-solo" onclick="guardarRemito(false)" class="bg-slate-700 hover:bg-slate-800 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow-sm transition-all">Guardar sin Imprimir</button>
           <button id="btn-imprimir" onclick="guardarEImprimir()" class="bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold px-6 py-2 rounded-lg text-sm shadow flex items-center gap-2 transition-all">
-            <span>🖨️</span> <span id="txt-btn-imprimir">Generar e Imprimir PDF (Rotado)</span>
+            <span>📄</span> <span id="txt-btn-imprimir">Descargar PDF para Imprimir</span>
           </button>
         </div>
       </div>
@@ -925,20 +925,20 @@
           guardandoBloqueado = false;
           btnGuardar.disabled = false;
           btnImprimir.disabled = false;
-          txtImprimir.innerText = "Generar e Imprimir PDF (Rotado)";
+          txtImprimir.innerText = "Descargar PDF para Imprimir";
         }, 1200);
       }
     }
 
-    // GENERADOR PDF DE 1 SOLA PÁGINA (216x340 mm) CON TEXTO ROTADO 90° (MEMBRETE A LA IZQUIERDA)
+    // GENERADOR PDF NATIVO APAISADO (340 mm x 220 mm) CON LOS 3 CUERPOS DE IZQUIERDA A DERECHA
     function generarPDFImpresion(data) {
       const { jsPDF } = window.jspdf;
       
-      // Hoja de 216 mm de ancho (bandeja) x 340 mm de alto (pliego continuo)
+      // Hoja apaisada exacta de 340 mm de ancho x 220 mm de alto (1 sola página física)
       const doc = new jsPDF({
-        orientation: "portrait",
+        orientation: "landscape",
         unit: "mm",
-        format: [216, 340]
+        format: [220, 340]
       });
 
       const ox = parseFloat(document.getElementById("offset-x").value) || 0;
@@ -947,51 +947,42 @@
       doc.setFont("courier", "bold");
       doc.setFontSize(10);
 
-      // Función matemática: traduce las coordenadas naturales (X=ancho remito 220, Y=largo remito 340)
-      // a las coordenadas del papel que avanza por la bandeja (ancho 216, alto 340) rotadas 90 grados.
-      function printCell(text, origX, origY) {
-        if (!text) return;
-        const posX = origY + oy;
-        const posY = (216 - origX) - ox;
-        doc.text(String(text), posX, posY, { angle: 90 });
-      }
-
-      // Imprime los 3 cuerpos a lo largo de los 340 mm
+      // Cada cuerpo mide 113.33 mm de ancho a lo largo de los 340 mm
       for (let i = 0; i < 3; i++) {
-        const topBase = i * 113.33;
+        const leftBase = (i * 113.33) + ox;
+        const topBase = oy;
 
         // FECHA
-        printCell(data.fecha || "", 168, topBase + 16);
+        doc.text(String(data.fecha || ""), leftBase + 85, topBase + 16);
 
         // CLIENTE
-        printCell(data.cliente?.razon || "", 24, topBase + 28);
-        printCell(data.cliente?.localidad || "", 155, topBase + 28);
-        printCell(data.cliente?.domicilio || "", 24, topBase + 34);
-        printCell(data.cliente?.cuit || "", 155, topBase + 34);
+        doc.text(String(data.cliente?.razon || ""), leftBase + 15, topBase + 28);
+        doc.text(String(data.cliente?.localidad || ""), leftBase + 75, topBase + 28);
+        doc.text(String(data.cliente?.domicilio || ""), leftBase + 15, topBase + 34);
+        doc.text(String(data.cliente?.cuit || ""), leftBase + 75, topBase + 34);
 
         // TRANSPORTE
-        printCell(data.transporte?.patente || "", 24, topBase + 40);
-        printCell(data.transporte?.cuit || "", 155, topBase + 40);
-        printCell(data.transporte?.transportista || "", 28, topBase + 45);
-        printCell(data.transporte?.domicilio || "", 24, topBase + 49);
+        doc.text(String(data.transporte?.patente || ""), leftBase + 15, topBase + 40);
+        doc.text(String(data.transporte?.cuit || ""), leftBase + 75, topBase + 40);
+        doc.text(String(data.transporte?.transportista || ""), leftBase + 18, topBase + 45);
+        doc.text(String(data.transporte?.domicilio || ""), leftBase + 15, topBase + 49);
 
         // MERCADERÍA
         let itemY = topBase + 59;
         if (data.items && data.items.length > 0) {
           data.items.forEach(it => {
-            printCell(`${it.cant} ${it.unidad}`, 15, itemY);
-            printCell(it.desc || "", 45, itemY);
+            doc.text(`${it.cant} ${it.unidad}`, leftBase + 10, itemY);
+            doc.text(String(it.desc || ""), leftBase + 28, itemY);
             itemY += 5;
           });
         }
 
         // OBSERVACIONES
-        printCell(data.obs || "", 35, topBase + 98);
+        doc.text(String(data.obs || ""), leftBase + 22, topBase + 98);
       }
 
-      // Abre directamente el archivo PDF vectorial generado
-      const blobUrl = doc.output("bloburl");
-      window.open(blobUrl, "_blank");
+      // Descarga el PDF directo al Mac para imprimir desde Vista Previa sin recortes
+      doc.save(`Remito_${data.numero || "Ranelagh"}.pdf`);
     }
 
     function renderizarHistorial(lista) {
@@ -1013,7 +1004,7 @@
             <td class="py-3 px-4 text-xs">${matResumen}</td>
             <td class="py-3 px-4 text-center">
               <div class="flex items-center justify-center gap-2">
-                <button onclick='generarPDFImpresion(${JSON.stringify(r)})' class="bg-cyan-100 text-cyan-800 hover:bg-cyan-200 text-xs px-2.5 py-1 rounded font-bold">Imprimir PDF</button>
+                <button onclick='generarPDFImpresion(${JSON.stringify(r)})' class="bg-cyan-100 text-cyan-800 hover:bg-cyan-200 text-xs px-2.5 py-1 rounded font-bold">Descargar PDF</button>
                 <button onclick="borrarRegistro('remitos', '${r.id}')" title="Eliminar remito" class="text-slate-400 hover:text-rose-600 text-base font-bold">🗑️</button>
               </div>
             </td>
