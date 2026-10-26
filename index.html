@@ -7,7 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, setDoc, onSnapshot, query, orderBy, deleteDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, setDoc, onSnapshot, query, orderBy, limit, where, getDocs, deleteDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCwZA4iI0hZ2ZBMpWJW3Li6VRxEb331gwg",
@@ -23,7 +23,7 @@
       const app = initializeApp(firebaseConfig);
       db = getFirestore(app);
       window.cloudDB = db;
-      window.firestoreMethods = { collection, addDoc, setDoc, onSnapshot, query, orderBy, deleteDoc, updateDoc, doc };
+      window.firestoreMethods = { collection, addDoc, setDoc, onSnapshot, query, orderBy, limit, where, getDocs, deleteDoc, updateDoc, doc };
       window.dispatchEvent(new Event("firebase-ready"));
     } catch(err) {
       console.warn("Error iniciando Firebase:", err);
@@ -226,21 +226,39 @@
     </div>
   </main>
 
-  <!-- PESTAÑA 2: HISTORIAL -->
+  <!-- PESTAÑA 2: HISTORIAL (OPTIMIZADO PARA ALTO VOLUMEN) -->
   <main id="view-historial" class="max-w-6xl mx-auto p-6 hidden no-print">
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
       <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
         <div>
-          <h2 class="font-bold text-slate-800 text-lg">Historial de Remitos Emitidos</h2>
-          <p class="text-xs text-slate-500">Consulta en tiempo real y descarga de planilla para control.</p>
+          <h2 class="font-bold text-slate-800 text-lg">Historial y Exportación de Remitos</h2>
+          <p class="text-xs text-slate-500">Muestra los 150 remitos más recientes. Para volúmenes mayores, selecciona el rango de fechas.</p>
         </div>
+      </div>
+
+      <!-- FILTRO DE RANGO DE FECHAS PARA EXCEL -->
+      <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex flex-wrap items-center gap-3 text-xs">
+          <span class="font-bold text-slate-700">Rango de Consulta:</span>
+          <div>
+            <label class="text-[11px] text-slate-500 block">Desde:</label>
+            <input type="date" id="filtro-desde" class="border rounded px-2.5 py-1 text-xs font-semibold outline-none focus:ring-2 focus:ring-cyan-600">
+          </div>
+          <div>
+            <label class="text-[11px] text-slate-500 block">Hasta:</label>
+            <input type="date" id="filtro-hasta" class="border rounded px-2.5 py-1 text-xs font-semibold outline-none focus:ring-2 focus:ring-cyan-600">
+          </div>
+          <button onclick="cargarRemitosPorRango()" class="mt-4 bg-slate-800 hover:bg-slate-900 text-white font-semibold px-3 py-1.5 rounded">Consultar Período</button>
+          <button onclick="cargarHistorialReciente()" class="mt-4 text-cyan-800 hover:underline">Ver Recientes</button>
+        </div>
+
         <button onclick="exportarExcelCSV()" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-4 py-2 rounded-lg text-sm shadow flex items-center gap-2">
           <span>📊</span> Exportar a Excel (CSV)
         </button>
       </div>
 
       <div class="mb-4">
-        <input type="text" id="filtro-buscar" oninput="filtrarHistorial()" placeholder="Buscar por número, cliente, patente o material..." class="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-cyan-600">
+        <input type="text" id="filtro-buscar" oninput="filtrarHistorialLocal()" placeholder="Buscar en esta vista por número, cliente, patente o material..." class="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-cyan-600">
       </div>
 
       <div class="overflow-x-auto border border-slate-200 rounded-lg">
@@ -256,7 +274,7 @@
             </tr>
           </thead>
           <tbody id="historial-tbody">
-            <tr><td colspan="6" class="text-center py-8 text-slate-400">No hay remitos registrados en la base de datos.</td></tr>
+            <tr><td colspan="6" class="text-center py-8 text-slate-400">Cargando remitos...</td></tr>
           </tbody>
         </table>
       </div>
@@ -415,7 +433,7 @@
     </div>
   </div>
 
-  <!-- ZONA DE IMPRESIÓN (ROTADA 90° EXACTOS PARA ENTRADA POR BANDEJA ANGOSTA) -->
+  <!-- ZONA DE IMPRESIÓN (ROTADA 90° CON ENTRADA DE COSTADO) -->
   <div id="printable-voucher-zone" style="display:none; width: 220mm; height: 335mm; position: relative;"></div>
 
   <script>
@@ -425,9 +443,13 @@
     let materialesList = [];
     let patentesAImportar = [];
     let guardandoBloqueado = false;
+    let unsubscribeRemitos = null;
 
     window.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("remito-fecha").valueAsDate = new Date();
+      const hoy = new Date().toISOString().slice(0, 10);
+      document.getElementById("remito-fecha").value = hoy;
+      document.getElementById("filtro-desde").value = hoy;
+      document.getElementById("filtro-hasta").value = hoy;
 
       document.addEventListener("click", (e) => {
         if (!e.target.closest("#search-cliente") && !e.target.closest("#dropdown-cliente")) {
@@ -444,15 +466,10 @@
 
     window.addEventListener("firebase-ready", () => {
       const db = window.cloudDB;
-      const { collection, onSnapshot, query, orderBy } = window.firestoreMethods;
+      const { collection, onSnapshot } = window.firestoreMethods;
 
       try {
-        const qRemitos = query(collection(db, "remitos"), orderBy("fecha", "desc"));
-        onSnapshot(qRemitos, (snap) => {
-          remitosList = [];
-          snap.forEach(d => remitosList.push({ id: d.id, ...d.data() }));
-          cargarHistorialUI();
-        });
+        cargarHistorialReciente();
 
         onSnapshot(collection(db, "patentes"), (snap) => {
           patentesList = [];
@@ -480,6 +497,53 @@
         console.warn("Error vinculando listeners:", e);
       }
     });
+
+    // CONSULTAS EFICIENTES A FIRESTORE
+    function cargarHistorialReciente() {
+      if (!window.cloudDB) return;
+      if (unsubscribeRemitos) unsubscribeRemitos();
+
+      const db = window.cloudDB;
+      const { collection, onSnapshot, query, orderBy, limit } = window.firestoreMethods;
+      // Límite de 150 registros para velocidad extrema
+      const q = query(collection(db, "remitos"), orderBy("creado", "desc"), limit(150));
+
+      unsubscribeRemitos = onSnapshot(q, (snap) => {
+        remitosList = [];
+        snap.forEach(d => remitosList.push({ id: d.id, ...d.data() }));
+        renderizarHistorial(remitosList);
+      });
+    }
+
+    async function cargarRemitosPorRango() {
+      const desde = document.getElementById("filtro-desde").value;
+      const hasta = document.getElementById("filtro-hasta").value;
+      if (!desde || !hasta) return alert("Selecciona ambas fechas para filtrar.");
+
+      if (unsubscribeRemitos) unsubscribeRemitos();
+
+      const db = window.cloudDB;
+      const { collection, getDocs, query, where, orderBy } = window.firestoreMethods;
+      const tbody = document.getElementById("historial-tbody");
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-cyan-700 font-semibold">Consultando base de datos para el período seleccionado...</td></tr>';
+
+      try {
+        const q = query(
+          collection(db, "remitos"),
+          where("fecha", ">=", desde),
+          where("fecha", "<=", hasta),
+          orderBy("fecha", "desc")
+        );
+        const snap = await getDocs(q);
+        remitosList = [];
+        snap.forEach(d => remitosList.push({ id: d.id, ...d.data() }));
+        renderizarHistorial(remitosList);
+      } catch (e) {
+        console.error("Error filtrando por rango:", e);
+        alert("Ocurrió un error al consultar el período. Volviendo a los más recientes.");
+        cargarHistorialReciente();
+      }
+    }
 
     function switchTab(tab) {
       document.getElementById("view-emitir").classList.add("hidden");
@@ -907,11 +971,10 @@
       const ox = parseFloat(document.getElementById("offset-x").value) || 0;
       const oy = parseFloat(document.getElementById("offset-y").value) || 0;
 
-      // El contenedor rota 90° para que al salir por la bandeja angosta quede perfectamente apaisado
       let html = `<div style="position: absolute; left: ${ox}mm; top: ${oy}mm; width: 335mm; height: 216mm; transform: rotate(-90deg) translate(-216mm, 0); transform-origin: top left; font-family: 'Courier New', Courier, monospace; font-size: 11px;">`;
 
       for(let i = 0; i < 3; i++) {
-        const topBase = i * 111.5; // Ajuste milimétrico para 3 secciones exactas sin salto
+        const topBase = i * 111.5;
         html += `
           <div style="position: absolute; top: ${topBase}mm; left: 0; width: 335mm; height: 111.5mm; overflow: hidden;">
             <div style="position: absolute; top: 14mm; left: 168mm; font-weight: bold;">${data.fecha}</div>
@@ -940,15 +1003,15 @@
       zone.innerHTML = html;
     }
 
-    function cargarHistorialUI() {
+    function renderizarHistorial(lista) {
       const tbody = document.getElementById("historial-tbody");
-      document.getElementById("badge-count").innerText = remitosList.length;
-      if(remitosList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-400">No hay remitos registrados.</td></tr>';
+      document.getElementById("badge-count").innerText = lista.length;
+      if(lista.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-400">No se encontraron remitos en este período.</td></tr>';
         return;
       }
       tbody.innerHTML = "";
-      remitosList.forEach(r => {
+      lista.forEach(r => {
         const matResumen = r.items ? r.items.map(i => `${i.cant} ${i.unidad} - ${i.desc}`).join("<br>") : "-";
         tbody.innerHTML += `
           <tr class="border-b border-slate-100 hover:bg-slate-50">
@@ -967,13 +1030,27 @@
       });
     }
 
+    function filtrarHistorialLocal() {
+      const q = document.getElementById("filtro-buscar").value.toLowerCase().trim();
+      if(!q) return renderizarHistorial(remitosList);
+
+      const filtrados = remitosList.filter(r => {
+        const num = (r.numero || "").toLowerCase();
+        const cli = (r.cliente?.razon || "").toLowerCase();
+        const pat = (r.transporte?.patente || "").toLowerCase();
+        const mats = (r.items || []).map(i => (i.desc || "").toLowerCase()).join(" ");
+        return num.includes(q) || cli.includes(q) || pat.includes(q) || mats.includes(q);
+      });
+      renderizarHistorial(filtrados);
+    }
+
     function reimprimirRemito(r) {
       armarZonaImpresion(r);
       setTimeout(() => { window.print(); }, 250);
     }
 
     function exportarExcelCSV() {
-      if(remitosList.length === 0) return alert("No hay remitos para exportar.");
+      if(remitosList.length === 0) return alert("No hay remitos para exportar en esta vista.");
       let csv = "FECHA;NUMERO;CLIENTE;LOCALIDAD;DOMICILIO CLIENTE;CUIT CLIENTE;PATENTE;TRANSPORTISTA;CUIT TRANSPORTE;DOMICILIO TRANSPORTE;CANTIDAD;UNIDAD;MATERIAL;OBSERVACIONES\r\n";
       remitosList.forEach(r => {
         if(r.items && r.items.length > 0) {
