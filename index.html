@@ -7,7 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCwZA4iI0hZ2ZBMpWJW3Li6VRxEb331gwg",
@@ -23,7 +23,7 @@
       const app = initializeApp(firebaseConfig);
       db = getFirestore(app);
       window.cloudDB = db;
-      window.firestoreMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc };
+      window.firestoreMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, updateDoc, doc };
       window.dispatchEvent(new Event("firebase-ready"));
     } catch(err) {
       console.warn("Error iniciando Firebase:", err);
@@ -259,7 +259,7 @@
           <h3 class="font-bold text-slate-800 text-sm">Clientes Habituales</h3>
           <button onclick="abrirModalCliente()" class="text-xs bg-cyan-700 hover:bg-cyan-800 text-white px-2.5 py-1 rounded font-semibold">+ Agregar</button>
         </div>
-        <div id="lista-maestro-clientes" class="space-y-2 max-h-96 overflow-y-auto pr-1"></div>
+        <div id="lista-maestro-clientes" class="space-y-2 max-h-[500px] overflow-y-auto pr-1"></div>
       </div>
 
       <!-- FLOTA / PATENTES -->
@@ -274,7 +274,7 @@
           </div>
         </div>
         <p class="text-xs text-slate-500 mb-3">Patentes y transportistas vinculados.</p>
-        <div id="lista-maestro-patentes" class="space-y-2 max-h-96 overflow-y-auto pr-1"></div>
+        <div id="lista-maestro-patentes" class="space-y-2 max-h-[500px] overflow-y-auto pr-1"></div>
       </div>
 
       <!-- MATERIALES -->
@@ -283,18 +283,19 @@
           <h3 class="font-bold text-slate-800 text-sm">Materiales Frecuentes</h3>
           <button onclick="abrirModalMaterial()" class="text-xs bg-emerald-700 hover:bg-emerald-800 text-white px-2.5 py-1 rounded font-semibold">+ Agregar</button>
         </div>
-        <div id="lista-maestro-materiales" class="space-y-2 max-h-96 overflow-y-auto pr-1"></div>
+        <div id="lista-maestro-materiales" class="space-y-2 max-h-[500px] overflow-y-auto pr-1"></div>
       </div>
     </div>
   </main>
 
-  <!-- MODAL NUEVO CLIENTE -->
+  <!-- MODAL CLIENTE (CREAR / EDITAR) -->
   <div id="modal-cliente" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden no-print">
     <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
       <div class="flex justify-between items-center mb-4">
-        <h3 class="font-bold text-base text-slate-800">Agregar Cliente Habitual</h3>
+        <h3 id="modal-cliente-titulo" class="font-bold text-base text-slate-800">Agregar Cliente Habitual</h3>
         <button onclick="cerrarModalCliente()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">×</button>
       </div>
+      <input type="hidden" id="m-cli-id">
       <div class="space-y-3 text-xs">
         <div>
           <label class="font-semibold block mb-1">Razón Social:</label>
@@ -315,18 +316,19 @@
       </div>
       <div class="flex justify-end gap-2 mt-5">
         <button onclick="cerrarModalCliente()" class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded">Cancelar</button>
-        <button onclick="guardarNuevoCliente()" class="px-4 py-1.5 text-xs font-bold bg-cyan-700 text-white rounded hover:bg-cyan-800">Guardar Cliente</button>
+        <button onclick="guardarNuevoCliente()" class="px-4 py-1.5 text-xs font-bold bg-cyan-700 text-white rounded hover:bg-cyan-800">Guardar</button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL NUEVA PATENTE -->
+  <!-- MODAL PATENTE (CREAR / EDITAR) -->
   <div id="modal-patente" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden no-print">
     <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
       <div class="flex justify-between items-center mb-4">
-        <h3 class="font-bold text-base text-slate-800">Agregar Patente & Transporte</h3>
+        <h3 id="modal-patente-titulo" class="font-bold text-base text-slate-800">Agregar Patente & Transporte</h3>
         <button onclick="cerrarModalPatente()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">×</button>
       </div>
+      <input type="hidden" id="m-tra-id">
       <div class="space-y-3 text-xs">
         <div>
           <label class="font-semibold block mb-1">Patente:</label>
@@ -347,18 +349,19 @@
       </div>
       <div class="flex justify-end gap-2 mt-5">
         <button onclick="cerrarModalPatente()" class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded">Cancelar</button>
-        <button onclick="guardarNuevaPatente()" class="px-4 py-1.5 text-xs font-bold bg-blue-700 text-white rounded hover:bg-blue-800">Guardar Patente</button>
+        <button onclick="guardarNuevaPatente()" class="px-4 py-1.5 text-xs font-bold bg-blue-700 text-white rounded hover:bg-blue-800">Guardar</button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL NUEVO MATERIAL -->
+  <!-- MODAL MATERIAL (CREAR / EDITAR) -->
   <div id="modal-material" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden no-print">
     <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 border border-slate-200">
       <div class="flex justify-between items-center mb-4">
-        <h3 class="font-bold text-base text-slate-800">Agregar Material Frecuente</h3>
+        <h3 id="modal-material-titulo" class="font-bold text-base text-slate-800">Agregar Material Frecuente</h3>
         <button onclick="cerrarModalMaterial()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">×</button>
       </div>
+      <input type="hidden" id="m-mat-id">
       <div class="space-y-3 text-xs">
         <div>
           <label class="font-semibold block mb-1">Nombre del Material / Descripción:</label>
@@ -376,7 +379,7 @@
       </div>
       <div class="flex justify-end gap-2 mt-5">
         <button onclick="cerrarModalMaterial()" class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded">Cancelar</button>
-        <button onclick="guardarNuevoMaterial()" class="px-4 py-1.5 text-xs font-bold bg-emerald-700 text-white rounded hover:bg-emerald-800">Guardar Material</button>
+        <button onclick="guardarNuevoMaterial()" class="px-4 py-1.5 text-xs font-bold bg-emerald-700 text-white rounded hover:bg-emerald-800">Guardar</button>
       </div>
     </div>
   </div>
@@ -443,7 +446,6 @@
       const db = window.cloudDB;
       const { collection, onSnapshot, query, orderBy } = window.firestoreMethods;
 
-      // Escuchar remitos
       try {
         const qRemitos = query(collection(db, "remitos"), orderBy("fecha", "desc"));
         onSnapshot(qRemitos, (snap) => {
@@ -452,21 +454,18 @@
           cargarHistorialUI();
         });
 
-        // Escuchar patentes
         onSnapshot(collection(db, "patentes"), (snap) => {
           patentesList = [];
           snap.forEach(d => patentesList.push({ id: d.id, ...d.data() }));
           cargarMaestrosUI();
         });
 
-        // Escuchar clientes
         onSnapshot(collection(db, "clientes"), (snap) => {
           clientesList = [];
           snap.forEach(d => clientesList.push({ id: d.id, ...d.data() }));
           cargarMaestrosUI();
         });
 
-        // Escuchar materiales
         onSnapshot(collection(db, "materiales"), (snap) => {
           materialesList = [];
           snap.forEach(d => {
@@ -513,9 +512,12 @@
         selCli.innerHTML += `<option value="${idx}">${c.razon}</option>`;
         listCli.innerHTML += `
           <div class="border border-slate-200 rounded p-2.5 text-xs bg-slate-50 relative group">
-            <button onclick="borrarRegistro('clientes', '${c.id}')" class="absolute top-2 right-2 text-slate-400 hover:text-rose-600 font-bold">🗑️</button>
-            <div class="font-bold text-slate-800">${c.razon}</div>
-            <div class="text-slate-500">CUIT: ${c.cuit} | ${c.localidad} - ${c.domicilio}</div>
+            <div class="absolute top-2 right-2 flex items-center gap-1.5">
+              <button onclick="editarCliente('${c.id}')" title="Editar" class="text-slate-400 hover:text-cyan-700 font-bold text-sm">✏️</button>
+              <button onclick="borrarRegistro('clientes', '${c.id}')" title="Eliminar" class="text-slate-400 hover:text-rose-600 font-bold text-sm">🗑️</button>
+            </div>
+            <div class="font-bold text-slate-800 pr-14">${c.razon}</div>
+            <div class="text-slate-500">CUIT: ${c.cuit || '-'} | ${c.localidad || '-'} - ${c.domicilio || '-'}</div>
           </div>`;
       });
 
@@ -525,13 +527,16 @@
       const listPat = document.getElementById("lista-maestro-patentes");
       listPat.innerHTML = '';
       patentesList.forEach((p, idx) => {
-        selPat.innerHTML += `<option value="${idx}">${p.patente} - ${p.transportista}</option>`;
+        selPat.innerHTML += `<option value="${idx}">${p.patente} - ${p.transportista || ''}</option>`;
         listPat.innerHTML += `
           <div class="border border-slate-200 rounded p-2.5 text-xs bg-slate-50 relative group">
-            <button onclick="borrarRegistro('patentes', '${p.id}')" class="absolute top-2 right-2 text-slate-400 hover:text-rose-600 font-bold">🗑️</button>
-            <div class="font-mono font-bold text-blue-800">${p.patente}</div>
-            <div class="text-slate-700 font-semibold">${p.transportista}</div>
-            <div class="text-slate-500">CUIT: ${p.cuit} | ${p.domicilio}</div>
+            <div class="absolute top-2 right-2 flex items-center gap-1.5">
+              <button onclick="editarPatente('${p.id}')" title="Editar" class="text-slate-400 hover:text-blue-700 font-bold text-sm">✏️</button>
+              <button onclick="borrarRegistro('patentes', '${p.id}')" title="Eliminar" class="text-slate-400 hover:text-rose-600 font-bold text-sm">🗑️</button>
+            </div>
+            <div class="font-mono font-bold text-blue-800 pr-14">${p.patente}</div>
+            <div class="text-slate-700 font-semibold">${p.transportista || '-'}</div>
+            <div class="text-slate-500">CUIT: ${p.cuit || '-'} | ${p.domicilio || '-'}</div>
           </div>`;
       });
 
@@ -549,15 +554,40 @@
               <div class="font-bold text-slate-800">${descripcion}</div>
               <div class="text-slate-500">Unidad: ${m.unidad}</div>
             </div>
-            <button onclick="borrarRegistro('materiales', '${m.id}')" class="text-slate-400 hover:text-rose-600 font-bold">🗑️</button>
+            <div class="flex items-center gap-1.5">
+              <button onclick="editarMaterial('${m.id}')" title="Editar" class="text-slate-400 hover:text-emerald-700 font-bold text-sm">✏️</button>
+              <button onclick="borrarRegistro('materiales', '${m.id}')" title="Eliminar" class="text-slate-400 hover:text-rose-600 font-bold text-sm">🗑️</button>
+            </div>
           </div>`;
       });
     }
 
-    // MODALES & AGREGAR DIRECTO A FIREBASE
-    function abrirModalCliente() { document.getElementById("modal-cliente").classList.remove("hidden"); }
+    // MODAL CLIENTE (ALTA Y EDICIÓN)
+    function abrirModalCliente() { 
+      document.getElementById("modal-cliente-titulo").innerText = "Agregar Cliente Habitual";
+      document.getElementById("m-cli-id").value = "";
+      document.getElementById("m-cli-razon").value = "";
+      document.getElementById("m-cli-cuit").value = "";
+      document.getElementById("m-cli-localidad").value = "";
+      document.getElementById("m-cli-domicilio").value = "";
+      document.getElementById("modal-cliente").classList.remove("hidden"); 
+    }
     function cerrarModalCliente() { document.getElementById("modal-cliente").classList.add("hidden"); }
+
+    function editarCliente(id) {
+      const cli = clientesList.find(c => c.id === id);
+      if(!cli) return;
+      document.getElementById("modal-cliente-titulo").innerText = "Editar Cliente Habitual";
+      document.getElementById("m-cli-id").value = cli.id;
+      document.getElementById("m-cli-razon").value = cli.razon || "";
+      document.getElementById("m-cli-cuit").value = cli.cuit || "";
+      document.getElementById("m-cli-localidad").value = cli.localidad || "";
+      document.getElementById("m-cli-domicilio").value = cli.domicilio || "";
+      document.getElementById("modal-cliente").classList.remove("hidden");
+    }
+
     async function guardarNuevoCliente() {
+      const id = document.getElementById("m-cli-id").value;
       const razon = document.getElementById("m-cli-razon").value.trim().toUpperCase();
       const cuit = document.getElementById("m-cli-cuit").value.trim();
       const localidad = document.getElementById("m-cli-localidad").value.trim();
@@ -565,18 +595,41 @@
       if(!razon) return alert("Ingresa la razón social");
       
       if(window.cloudDB) {
-        await window.firestoreMethods.addDoc(window.firestoreMethods.collection(window.cloudDB, "clientes"), { razon, cuit, localidad, domicilio });
+        if(id) {
+          await window.firestoreMethods.updateDoc(window.firestoreMethods.doc(window.cloudDB, "clientes", id), { razon, cuit, localidad, domicilio });
+        } else {
+          await window.firestoreMethods.addDoc(window.firestoreMethods.collection(window.cloudDB, "clientes"), { razon, cuit, localidad, domicilio });
+        }
       }
       cerrarModalCliente();
-      document.getElementById("m-cli-razon").value = "";
-      document.getElementById("m-cli-cuit").value = "";
-      document.getElementById("m-cli-localidad").value = "";
-      document.getElementById("m-cli-domicilio").value = "";
     }
 
-    function abrirModalPatente() { document.getElementById("modal-patente").classList.remove("hidden"); }
+    // MODAL PATENTE (ALTA Y EDICIÓN)
+    function abrirModalPatente() { 
+      document.getElementById("modal-patente-titulo").innerText = "Agregar Patente & Transporte";
+      document.getElementById("m-tra-id").value = "";
+      document.getElementById("m-tra-patente").value = "";
+      document.getElementById("m-tra-nombre").value = "";
+      document.getElementById("m-tra-cuit").value = "";
+      document.getElementById("m-tra-domicilio").value = "";
+      document.getElementById("modal-patente").classList.remove("hidden"); 
+    }
     function cerrarModalPatente() { document.getElementById("modal-patente").classList.add("hidden"); }
+
+    function editarPatente(id) {
+      const pat = patentesList.find(p => p.id === id);
+      if(!pat) return;
+      document.getElementById("modal-patente-titulo").innerText = "Editar Patente & Transporte";
+      document.getElementById("m-tra-id").value = pat.id;
+      document.getElementById("m-tra-patente").value = pat.patente || "";
+      document.getElementById("m-tra-nombre").value = pat.transportista || "";
+      document.getElementById("m-tra-cuit").value = pat.cuit || "";
+      document.getElementById("m-tra-domicilio").value = pat.domicilio || "";
+      document.getElementById("modal-patente").classList.remove("hidden");
+    }
+
     async function guardarNuevaPatente() {
+      const id = document.getElementById("m-tra-id").value;
       const patente = document.getElementById("m-tra-patente").value.trim().toUpperCase();
       const transportista = document.getElementById("m-tra-nombre").value.trim().toUpperCase();
       const cuit = document.getElementById("m-tra-cuit").value.trim();
@@ -584,27 +637,49 @@
       if(!patente) return alert("Ingresa la patente");
 
       if(window.cloudDB) {
-        await window.firestoreMethods.addDoc(window.firestoreMethods.collection(window.cloudDB, "patentes"), { patente, transportista, cuit, domicilio });
+        if(id) {
+          await window.firestoreMethods.updateDoc(window.firestoreMethods.doc(window.cloudDB, "patentes", id), { patente, transportista, cuit, domicilio });
+        } else {
+          await window.firestoreMethods.addDoc(window.firestoreMethods.collection(window.cloudDB, "patentes"), { patente, transportista, cuit, domicilio });
+        }
       }
       cerrarModalPatente();
-      document.getElementById("m-tra-patente").value = "";
-      document.getElementById("m-tra-nombre").value = "";
-      document.getElementById("m-tra-cuit").value = "";
-      document.getElementById("m-tra-domicilio").value = "";
     }
 
-    function abrirModalMaterial() { document.getElementById("modal-material").classList.remove("hidden"); }
+    // MODAL MATERIAL (ALTA Y EDICIÓN)
+    function abrirModalMaterial() { 
+      document.getElementById("modal-material-titulo").innerText = "Agregar Material Frecuente";
+      document.getElementById("m-mat-id").value = "";
+      document.getElementById("m-mat-desc").value = "";
+      document.getElementById("m-mat-unidad").value = "m3";
+      document.getElementById("modal-material").classList.remove("hidden"); 
+    }
     function cerrarModalMaterial() { document.getElementById("modal-material").classList.add("hidden"); }
+
+    function editarMaterial(id) {
+      const mat = materialesList.find(m => m.id === id);
+      if(!mat) return;
+      document.getElementById("modal-material-titulo").innerText = "Editar Material Frecuente";
+      document.getElementById("m-mat-id").value = mat.id;
+      document.getElementById("m-mat-desc").value = mat.desc || "";
+      document.getElementById("m-mat-unidad").value = mat.unidad || "m3";
+      document.getElementById("modal-material").classList.remove("hidden");
+    }
+
     async function guardarNuevoMaterial() {
+      const id = document.getElementById("m-mat-id").value;
       const desc = document.getElementById("m-mat-desc").value.trim();
       const unidad = document.getElementById("m-mat-unidad").value;
       if(!desc) return alert("Ingresa el nombre del material");
 
       if(window.cloudDB) {
-        await window.firestoreMethods.addDoc(window.firestoreMethods.collection(window.cloudDB, "materiales"), { desc, unidad });
+        if(id) {
+          await window.firestoreMethods.updateDoc(window.firestoreMethods.doc(window.cloudDB, "materiales", id), { desc, unidad });
+        } else {
+          await window.firestoreMethods.addDoc(window.firestoreMethods.collection(window.cloudDB, "materiales"), { desc, unidad });
+        }
       }
       cerrarModalMaterial();
-      document.getElementById("m-mat-desc").value = "";
     }
 
     async function borrarRegistro(coleccion, id) {
