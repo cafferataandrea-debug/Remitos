@@ -185,8 +185,8 @@
       <div class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex justify-between items-center flex-wrap gap-4">
         <div class="flex items-center gap-3">
           <label class="text-xs font-semibold text-slate-600">Ajuste Fino Milimétrico:</label>
-          <span class="text-xs text-slate-500">Offset Horizontal (X): <input type="number" id="offset-x" value="0" step="1" class="w-14 border rounded px-1.5 py-0.5 text-center font-mono"> mm</span>
-          <span class="text-xs text-slate-500">Offset Vertical (Y): <input type="number" id="offset-y" value="0" step="1" class="w-14 border rounded px-1.5 py-0.5 text-center font-mono"> mm</span>
+          <span class="text-xs text-slate-500">Horizontal (X): <input type="number" id="offset-x" value="0" step="1" class="w-14 border rounded px-1.5 py-0.5 text-center font-mono"> mm</span>
+          <span class="text-xs text-slate-500">Vertical (Y): <input type="number" id="offset-y" value="0" step="1" class="w-14 border rounded px-1.5 py-0.5 text-center font-mono"> mm</span>
         </div>
         <div class="flex gap-3">
           <button id="btn-guardar-solo" onclick="guardarRemito(false)" class="bg-slate-700 hover:bg-slate-800 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow-sm transition-all">Guardar sin Imprimir</button>
@@ -930,14 +930,13 @@
       }
     }
 
-    // GENERADOR PDF NATIVO EN FORMATO APAISADO (340 x 220 mm)
-    // CADA CUERPO VA DISTRIBUIDO A LO LARGO DE LOS 340 mm
+    // GENERADOR PDF VERTICAL EXACTO (220 mm ancho x 340 mm alto)
+    // 3 cuerpos apilados de 113.33 mm cada uno, sin rotaciones
     function generarPDFImpresion(data) {
       const { jsPDF } = window.jspdf;
       
-      // Hoja apaisada limpia de 340 mm de ancho x 220 mm de alto (1 sola página física)
       const doc = new jsPDF({
-        orientation: "landscape",
+        orientation: "portrait",
         unit: "mm",
         format: [220, 340]
       });
@@ -948,41 +947,39 @@
       doc.setFont("courier", "bold");
       doc.setFontSize(10);
 
-      // Los 3 cuerpos van de izquierda a derecha en anchos de 113.33 mm cada uno
       for (let i = 0; i < 3; i++) {
-        const leftBase = (i * 113.33) + ox;
-        const topBase = oy;
+        const topBase = (i * 113.33) + oy;
+        const leftBase = ox;
 
         // FECHA
-        doc.text(String(data.fecha || ""), leftBase + 82, topBase + 28);
+        doc.text(String(data.fecha || ""), leftBase + 168, topBase + 16);
 
         // CLIENTE
-        doc.text(String(data.cliente?.razon || ""), leftBase + 12, topBase + 42);
-        doc.text(String(data.cliente?.localidad || ""), leftBase + 75, topBase + 42);
-        doc.text(String(data.cliente?.domicilio || ""), leftBase + 12, topBase + 49);
-        doc.text(String(data.cliente?.cuit || ""), leftBase + 75, topBase + 49);
+        doc.text(String(data.cliente?.razon || ""), leftBase + 24, topBase + 28);
+        doc.text(String(data.cliente?.localidad || ""), leftBase + 155, topBase + 28);
+        doc.text(String(data.cliente?.domicilio || ""), leftBase + 24, topBase + 34);
+        doc.text(String(data.cliente?.cuit || ""), leftBase + 155, topBase + 34);
 
         // TRANSPORTE
-        doc.text(String(data.transporte?.patente || ""), leftBase + 12, topBase + 57);
-        doc.text(String(data.transporte?.cuit || ""), leftBase + 75, topBase + 57);
-        doc.text(String(data.transporte?.transportista || ""), leftBase + 14, topBase + 64);
-        doc.text(String(data.transporte?.domicilio || ""), leftBase + 12, topBase + 70);
+        doc.text(String(data.transporte?.patente || ""), leftBase + 24, topBase + 40);
+        doc.text(String(data.transporte?.cuit || ""), leftBase + 155, topBase + 40);
+        doc.text(String(data.transporte?.transportista || ""), leftBase + 28, topBase + 45);
+        doc.text(String(data.transporte?.domicilio || ""), leftBase + 24, topBase + 49);
 
         // MERCADERÍA
-        let itemY = topBase + 85;
+        let itemY = topBase + 59;
         if (data.items && data.items.length > 0) {
           data.items.forEach(it => {
-            doc.text(`${it.cant} ${it.unidad}`, leftBase + 8, itemY);
-            doc.text(String(it.desc || ""), leftBase + 26, itemY);
-            itemY += 6;
+            doc.text(`${it.cant} ${it.unidad}`, leftBase + 15, itemY);
+            doc.text(String(it.desc || ""), leftBase + 45, itemY);
+            itemY += 5;
           });
         }
 
         // OBSERVACIONES
-        doc.text(String(data.obs || ""), leftBase + 16, topBase + 145);
+        doc.text(String(data.obs || ""), leftBase + 35, topBase + 98);
       }
 
-      // Descarga el PDF directo
       doc.save(`Remito_${data.numero || "Ranelagh"}.pdf`);
     }
 
