@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ranelagh Construcciones S.A. - Remitos Preimpresos</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCwZA4iI0hZ2ZBMpWJW3Li6VRxEb331gwg",
+      authDomain: "remitos-ranelagh.firebaseapp.com",
+      projectId: "remitos-ranelagh",
+      storageBucket: "remitos-ranelagh.firebasestorage.app",
+      messagingSenderId: "634992173577",
+      appId: "1:634992173577:web:ff17ac13ca8e54bc9d4ed8"
+    };
+
+    let db;
+    try {
+      const app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+      window.cloudDB = db;
+      window.firestoreMethods = { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc };
+      window.dispatchEvent(new Event("firebase-ready"));
+    } catch(err) {
+      console.warn("Error iniciando Firebase:", err);
+    }
+  </script>
+  <style>
+    @media print {
+      body * { visibility: hidden !important; }
+      #printable-voucher-zone, #printable-voucher-zone * { visibility: visible !important; }
+      #printable-voucher-zone {
+        display: block !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 220mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .no-print { display: none !important; }
+      @page {
+        size: 220mm 340mm;
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
+
+  <nav class="bg-slate-900 text-white px-6 py-4 flex flex-wrap justify-between items-center shadow no-print">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded bg-cyan-700 font-serif font-black flex items-center justify-center text-xl">R</div>
+      <div>
+        <h1 class="font-bold text-lg leading-tight">Ranelagh Construcciones S.A.</h1>
+        <p class="text-xs text-slate-400">Dr. Alberto Sabin Nº 2863 - C.U.I.T. 30-58301375-9</p>
+      </div>
+      <span class="bg-cyan-950 text-cyan-400 border border-cyan-800 text-xs px-2.5 py-0.5 rounded font-bold uppercase tracking-wider ml-2">Remito Preimpreso</span>
+    </div>
+
+    <div class="flex items-center gap-4">
+      <div id="cloud-indicator" class="flex items-center gap-2 text-xs bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-full">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="text-emerald-300 font-semibold">Nube Conectada (Tiempo Real)</span>
+      </div>
+      <div class="flex bg-slate-800 rounded-lg p-1 border border-slate-700 text-sm">
+        <button onclick="switchTab('emitir')" id="tab-emitir" class="px-4 py-1.5 rounded font-semibold bg-cyan-700 text-white">Nuevo Remito</button>
+        <button onclick="switchTab('historial')" id="tab-historial" class="px-4 py-1.5 rounded font-semibold text-slate-300 hover:text-white">Historial <span id="badge-count" class="ml-1 bg-slate-700 text-xs px-2 py-0.5 rounded-full">0</span></button>
+        <button onclick="switchTab('maestros')" id="tab-maestros" class="px-4 py-1.5 rounded font-semibold text-slate-300 hover:text-white">Precargas & Maestros</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- PESTAÑA 1: NUEVO REMITO -->
+  <main id="view-emitir" class="max-w-6xl mx-auto p-6 no-print">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
+      <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex justify-between items-center flex-wrap gap-4">
+        <div>
+          <h2 class="font-bold text-slate-800 text-lg">Emisión de Remito Sobre Formulario Continuo</h2>
+          <p class="text-xs text-slate-500">Imprime únicamente los textos sobre los casilleros del papel preimpreso.</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <label class="text-xs font-semibold text-slate-600">Número Impreso en Papel:</label>
+          <input type="text" id="remito-numero" value="00105001" placeholder="Ej: 00105001" class="border border-slate-300 rounded px-3 py-1 text-sm font-mono font-bold w-36 text-center text-slate-900 focus:ring-2 focus:ring-cyan-600 outline-none">
+          <input type="date" id="remito-fecha" class="border border-slate-300 rounded px-3 py-1 text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-cyan-600 outline-none">
+        </div>
+      </div>
+
+      <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- DESTINATARIO -->
+        <div class="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-cyan-600"></span> Señor (es) / Cliente
+            </h3>
+            <select id="select-cliente" onchange="seleccionarCliente(this.value)" class="text-xs border border-cyan-300 rounded px-2 py-1 bg-white text-cyan-900 font-medium outline-none">
+              <option value="">-- Cargar desde clientes guardados --</option>
+            </select>
+          </div>
+          <div class="space-y-3 text-sm">
+            <div>
+              <label class="text-xs text-slate-500 block">Razón Social (Señor/es):</label>
+              <input type="text" id="cli-razon" placeholder="Nombre de la empresa o cliente" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm uppercase">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-xs text-slate-500 block">Localidad:</label>
+                <input type="text" id="cli-localidad" placeholder="Ej: Ranelagh / Berazategui" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm">
+              </div>
+              <div>
+                <label class="text-xs text-slate-500 block">C.U.I.T. N°:</label>
+                <input type="text" id="cli-cuit" placeholder="30-XXXXXXXX-X" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm font-mono">
+              </div>
+            </div>
+            <div>
+              <label class="text-xs text-slate-500 block">Domicilio:</label>
+              <input type="text" id="cli-domicilio" placeholder="Calle y número de entrega u obra" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm">
+            </div>
+          </div>
+        </div>
+
+        <!-- TRANSPORTE -->
+        <div class="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-blue-600"></span> Transporte / Patente
+            </h3>
+            <select id="select-patente" onchange="seleccionarPatente(this.value)" class="text-xs border border-blue-300 rounded px-2 py-1 bg-white text-blue-900 font-medium outline-none">
+              <option value="">-- Seleccionar Patente Guardada --</option>
+            </select>
+          </div>
+          <div class="space-y-3 text-sm">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-xs text-slate-500 block">Patente (Camión/Batea):</label>
+                <input type="text" id="tra-patente" placeholder="Ej: AF 123 CD" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm font-mono font-bold uppercase">
+              </div>
+              <div>
+                <label class="text-xs text-slate-500 block">C.U.I.T. Fletero:</label>
+                <input type="text" id="tra-cuit" placeholder="20-XXXXXXXX-X" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm font-mono">
+              </div>
+            </div>
+            <div>
+              <label class="text-xs text-slate-500 block">Transportista (Razón Social o Chofer):</label>
+              <input type="text" id="tra-nombre" placeholder="Nombre de la empresa de transporte o chofer" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm uppercase">
+            </div>
+            <div>
+              <label class="text-xs text-slate-500 block">Domicilio Fletero:</label>
+              <input type="text" id="tra-domicilio" placeholder="Domicilio del transportista" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DETALLE MATERIALES -->
+      <div class="px-6 pb-6">
+        <div class="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
+          <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
+            <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-600"></span> Mercadería / Materiales
+            </h3>
+            <div class="flex items-center gap-2">
+              <select id="select-material" onchange="insertarMaterial(this.value)" class="text-xs border border-emerald-300 rounded px-2 py-1 bg-white text-emerald-900 font-medium outline-none">
+                <option value="">-- Insertar material precargado --</option>
+              </select>
+              <button onclick="agregarFilaItem()" class="text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold px-3 py-1 rounded">+ Agregar Renglón</button>
+            </div>
+          </div>
+          <table class="w-full text-left text-sm">
+            <thead>
+              <tr class="text-xs text-slate-500 border-b border-slate-200">
+                <th class="py-2 w-28">CANTIDAD</th>
+                <th class="py-2 w-28">UNIDAD</th>
+                <th class="py-2">MATERIAL / DESCRIPCIÓN</th>
+                <th class="py-2 w-12 text-center"></th>
+              </tr>
+            </thead>
+            <tbody id="items-tbody">
+              <tr class="border-b border-slate-100">
+                <td class="py-1.5 pr-2"><input type="number" step="any" value="30" class="item-cant w-full border border-slate-300 rounded px-2 py-1 text-sm font-semibold"></td>
+                <td class="py-1.5 pr-2"><input type="text" value="m3" class="item-unidad w-full border border-slate-300 rounded px-2 py-1 text-sm"></td>
+                <td class="py-1.5 pr-2"><input type="text" value="Tosca para relleno y compactación" class="item-desc w-full border border-slate-300 rounded px-2 py-1 text-sm uppercase"></td>
+                <td class="py-1.5 text-center"><button onclick="eliminarFila(this)" class="text-slate-400 hover:text-rose-600 font-bold">×</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="mt-4">
+            <label class="text-xs text-slate-500 block">OBSERVACIONES:</label>
+            <input type="text" id="remito-obs" placeholder="Ej: Obra Autopista Km 38 / Retira con batea" class="w-full border border-slate-300 rounded px-3 py-1.5 text-sm uppercase">
+          </div>
+        </div>
+      </div>
+
+      <!-- BOTONES ACCION -->
+      <div class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex justify-between items-center flex-wrap gap-4">
+        <div class="flex items-center gap-3">
+          <label class="text-xs font-semibold text-slate-600">Calibración Brother:</label>
+          <span class="text-xs text-slate-500">Offset X: <input type="number" id="offset-x" value="0" step="0.5" class="w-12 border rounded px-1 text-center font-mono"> mm</span>
+          <span class="text-xs text-slate-500">Offset Y: <input type="number" id="offset-y" value="0" step="0.5" class="w-12 border rounded px-1 text-center font-mono"> mm</span>
+        </div>
+        <div class="flex gap-3">
+          <button onclick="guardarRemito(false)" class="bg-slate-700 hover:bg-slate-800 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow-sm">Guardar sin Imprimir</button>
+          <button onclick="guardarEImprimir()" class="bg-cyan-700 hover:bg-cyan-800 text-white font-bold px-6 py-2 rounded-lg text-sm shadow flex items-center gap-2">
+            <span>🖨️</span> Mandar a Imprimir en Brother
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- PESTAÑA 2: HISTORIAL -->
+  <main id="view-historial" class="max-w-6xl mx-auto p-6 hidden no-print">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+      <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <div>
+          <h2 class="font-bold text-slate-800 text-lg">Historial de Remitos Emitidos</h2>
+          <p class="text-xs text-slate-500">Consulta en tiempo real y descarga de planilla para control.</p>
+        </div>
+        <button onclick="exportarExcelCSV()" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-4 py-2 rounded-lg text-sm shadow flex items-center gap-2">
+          <span>📊</span> Exportar a Excel (CSV)
+        </button>
+      </div>
+
+      <div class="mb-4">
+        <input type="text" id="filtro-buscar" oninput="filtrarHistorial()" placeholder="Buscar por número, cliente, patente o material..." class="w-full border border-slate-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-cyan-600">
+      </div>
+
+      <div class="overflow-x-auto border border-slate-200 rounded-lg">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-slate-50 border-b border-slate-200 text-xs text-slate-600 font-semibold uppercase">
+            <tr>
+              <th class="py-3 px-4">FECHA</th>
+              <th class="py-3 px-4">Nº REMITO</th>
+              <th class="py-3 px-4">CLIENTE (SEÑOR/ES)</th>
+              <th class="py-3 px-4">PATENTE</th>
+              <th class="py-3 px-4">MATERIALES / CANTIDAD</th>
+              <th class="py-3 px-4 text-center">ACCIONES</th>
+            </tr>
+          </thead>
+          <tbody id="historial-tbody">
+            <tr><td colspan="6" class="text-center py-8 text-slate-400">No hay remitos registrados en la base de datos.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- PESTAÑA 3: PRECARGAS & MAESTROS -->
+  <main id="view-maestros" class="max-w-6xl mx-auto p-6 hidden no-print">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+      <!-- CLIENTES -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-bold text-slate-800 text-sm">Clientes Habituales</h3>
+          <button onclick="abrirModalCliente()" class="text-xs bg-cyan-700 hover:bg-cyan-800 text-white px-2.5 py-1 rounded font-semibold">+ Agregar</button>
+        </div>
+        <div id="lista-maestro-clientes" class="space-y-2 max-h-96 overflow-y-auto pr-1"></div>
+      </div>
+
+      <!-- FLOTA / PATENTES -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <div class="flex justify-between items-center mb-2 flex-wrap gap-2">
+          <h3 class="font-bold text-slate-800 text-sm">Patentes & Flota</h3>
+          <div class="flex gap-1.5">
+            <button onclick="abrirModalImportador()" class="text-xs bg-emerald-700 hover:bg-emerald-800 text-white px-2 py-1 rounded font-bold flex items-center gap-1 shadow-sm">
+              <span>📥</span> Importar Masivo
+            </button>
+            <button onclick="abrirModalPatente()" class="text-xs bg-blue-700 hover:bg-blue-800 text-white px-2 py-1 rounded font-semibold">+ Agregar</button>
+          </div>
+        </div>
+        <p class="text-xs text-slate-500 mb-3">Patentes y transportistas vinculados.</p>
+        <div id="lista-maestro-patentes" class="space-y-2 max-h-96 overflow-y-auto pr-1"></div>
+      </div>
+
+      <!-- MATERIALES -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-bold text-slate-800 text-sm">Materiales Frecuentes</h3>
+          <button onclick="abrirModalMaterial()" class="text-xs bg-emerald-700 hover:bg-emerald-800 text-white px-2.5 py-1 rounded font-semibold">+ Agregar</button>
+        </div>
+        <div id="lista-maestro-materiales" class="space-y-2 max-h-96 overflow-y-auto pr-1"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL NUEVO CLIENTE -->
+  <div id="modal-cliente" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-base text-slate-800">Agregar Cliente Habitual</h3>
+        <button onclick="cerrarModalCliente()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">×</button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="font-semibold block mb-1">Razón Social:</label>
+          <input type="text" id="m-cli-razon" placeholder="Ej: VIALIDAD SUR S.R.L." class="w-full border rounded p-2 uppercase outline-none focus:ring-2 focus:ring-cyan-600">
+        </div>
+        <div>
+          <label class="font-semibold block mb-1">C.U.I.T.:</label>
+          <input type="text" id="m-cli-cuit" placeholder="30-XXXXXXXX-X" class="w-full border rounded p-2 font-mono outline-none focus:ring-2 focus:ring-cyan-600">
+        </div>
+        <div>
+          <label class="font-semibold block mb-1">Localidad:</label>
+          <input type="text" id="m-cli-localidad" placeholder="Ej: Ranelagh" class="w-full border rounded p-2 outline-none focus:ring-2 focus:ring-cyan-600">
+        </div>
+        <div>
+          <label class="font-semibold block mb-1">Domicilio:</label>
+          <input type="text" id="m-cli-domicilio" placeholder="Ej: Av. Sabin Nº 3100" class="w-full border rounded p-2 outline-none focus:ring-2 focus:ring-cyan-600">
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 mt-5">
+        <button onclick="cerrarModalCliente()" class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded">Cancelar</button>
+        <button onclick="guardarNuevoCliente()" class="px-4 py-1.5 text-xs font-bold bg-cyan-700 text-white rounded hover:bg-cyan-800">Guardar Cliente</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL NUEVA PATENTE -->
+  <div id="modal-patente" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-base text-slate-800">Agregar Patente & Transporte</h3>
+        <button onclick="cerrarModalPatente()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">×</button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="font-semibold block mb-1">Patente:</label>
+          <input type="text" id="m-tra-patente" placeholder="Ej: AF 123 CD" class="w-full border rounded p-2 uppercase font-mono font-bold outline-none focus:ring-2 focus:ring-blue-600">
+        </div>
+        <div>
+          <label class="font-semibold block mb-1">Transportista / Fletero:</label>
+          <input type="text" id="m-tra-nombre" placeholder="Ej: Fletes Don Pedro S.R.L." class="w-full border rounded p-2 uppercase outline-none focus:ring-2 focus:ring-blue-600">
+        </div>
+        <div>
+          <label class="font-semibold block mb-1">C.U.I.T. Fletero:</label>
+          <input type="text" id="m-tra-cuit" placeholder="20-XXXXXXXX-X" class="w-full border rounded p-2 font-mono outline-none focus:ring-2 focus:ring-blue-600">
+        </div>
+        <div>
+          <label class="font-semibold block mb-1">Domicilio Fletero:</label>
+          <input type="text" id="m-tra-domicilio" placeholder="Ej: Calle 21 Nº 1450" class="w-full border rounded p-2 outline-none focus:ring-2 focus:ring-blue-600">
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 mt-5">
+        <button onclick="cerrarModalPatente()" class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded">Cancelar</button>
+        <button onclick="guardarNuevaPatente()" class="px-4 py-1.5 text-xs font-bold bg-blue-700 text-white rounded hover:bg-blue-800">Guardar Patente</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL NUEVO MATERIAL -->
+  <div id="modal-material" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 border border-slate-200">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-base text-slate-800">Agregar Material Frecuente</h3>
+        <button onclick="cerrarModalMaterial()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">×</button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="font-semibold block mb-1">Nombre del Material / Descripción:</label>
+          <input type="text" id="m-mat-desc" placeholder="Ej: Tosca seleccionada" class="w-full border rounded p-2 uppercase outline-none focus:ring-2 focus:ring-emerald-600">
+        </div>
+        <div>
+          <label class="font-semibold block mb-1">Unidad de Medida:</label>
+          <select id="m-mat-unidad" class="w-full border rounded p-2 outline-none">
+            <option value="m3">m3 (Metros cúbicos)</option>
+            <option value="tn">tn (Toneladas)</option>
+            <option value="viaje">viaje (Viaje completo)</option>
+            <option value="bolsas">bolsas</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 mt-5">
+        <button onclick="cerrarModalMaterial()" class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded">Cancelar</button>
+        <button onclick="guardarNuevoMaterial()" class="px-4 py-1.5 text-xs font-bold bg-emerald-700 text-white rounded hover:bg-emerald-800">Guardar Material</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL IMPORTADOR MASIVO DESDE EXCEL -->
+  <div id="modal-importador" class="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 border border-slate-200">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+          <span>📥</span> Importación Masiva de Patentes desde Excel
+        </h3>
+        <button onclick="cerrarModalImportador()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">×</button>
+      </div>
+      <p class="text-xs text-slate-600 mb-4">
+        Copia las celdas directamente desde tu planilla de Excel y pégalas aquí abajo.  
+        El orden de las columnas debe ser: <b class="text-slate-900">PATENTE | TRANSPORTISTA | CUIT | DOMICILIO</b>.
+      </p>
+
+      <textarea id="import-paste-area" rows="6" placeholder="Pega aquí las celdas copiadas de Excel (separadas por tabulaciones o comas)&#10;Ejemplo:&#10;AF 123 CD	Fletes Don Pedro S.R.L.	30-70981245-2	Calle 21 Nº 1450 - Berazategui" class="w-full border border-slate-300 rounded-lg p-3 text-xs font-mono outline-none focus:ring-2 focus:ring-emerald-600 mb-3"></textarea>
+
+      <div class="flex justify-between items-center mb-4">
+        <button onclick="procesarTextoPegado()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-4 py-2 rounded">1. Procesar Datos Pegados</button>
+        <span id="import-contador" class="text-xs font-bold text-emerald-700">0 filas listas para importar</span>
+      </div>
+
+      <div id="import-preview-box" class="max-h-48 overflow-y-auto border border-slate-200 rounded-lg mb-4 text-xs">
+        <table class="w-full text-left">
+          <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold sticky top-0">
+            <tr>
+              <th class="p-2">PATENTE</th>
+              <th class="p-2">TRANSPORTISTA</th>
+              <th class="p-2">CUIT</th>
+              <th class="p-2">DOMICILIO</th>
+            </tr>
+          </thead>
+          <tbody id="import-preview-tbody">
+            <tr><td colspan="4" class="p-3 text-center text-slate-400">Pega los datos y haz clic en "Procesar".</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex justify-end gap-3 border-t pt-3">
+        <button onclick="cerrarModalImportador()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded">Cancelar</button>
+        <button onclick="guardarPatentesImportadas()" id="btn-confirmar-import" disabled class="bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-xs px-5 py-2 rounded shadow">Confirmar e Importar a la Nube</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ZONA DE IMPRESION SOLO DATOS (3 CUERPOS DE 113.3mm) -->
+  <div id="printable-voucher-zone" style="display:none; width: 220mm; font-family: sans-serif; position: relative;"></div>
+
+  <script>
+    let remitosList = [];
+    let clientesList = [];
+    let patentesList = [];
+    let materialesList = [];
+    let patentesAImportar = [];
+
+    window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("remito-fecha").valueAsDate = new Date();
+    });
+
+    window.addEventListener("firebase-ready", () => {
+      const db = window.cloudDB;
+      const { collection, onSnapshot, query, orderBy } = window.firestoreMethods;
+
+      // Escuchar remitos
+      try {
+        const qRemitos = query(collection(db, "remitos"), orderBy("fecha", "desc"));
+        onSnapshot(qRemitos, (snap) => {
+          remitosList = [];
+          snap.forEach(d => remitosList.push({ id: d.id, ...d.data() }));
+          cargarHistorialUI();
+        });
+
+        // Escuchar patentes
+        onSnapshot(collection(db, "patentes"), (snap) => {
+          patentesList = [];
+          snap.forEach(d => patentesList.push({ id: d.id, ...d.data() }));
+          cargarMaestrosUI();
+        });
+
+        // Escuchar clientes
+        onSnapshot(collection(db, "clientes"), (snap) => {
+          clientesList = [];
+          snap.forEach(d => clientesList.push({ id: d.id, ...d.data() }));
+          cargarMaestrosUI();
+        });
+
+        // Escuchar materiales
+        onSnapshot(collection(db, "materiales"), (snap) => {
+          materialesList = [];
+          snap.forEach(d => {
+            const data = d.data();
+            const nombre = data.desc || data.nombre || data.descripcion || "Material";
+            const unidad = data.unidad || "m3";
+            materialesList.push({ id: d.id, desc: nombre, unidad: unidad });
+          });
+          cargarMaestrosUI();
+        });
+      } catch(e) {
+        console.warn("Error vinculando listeners:", e);
+      }
+    });
+
+    function switchTab(tab) {
+      document.getElementById("view-emitir").classList.add("hidden");
+      document.getElementById("view-historial").classList.add("hidden");
+      document.getElementById("view-maestros").classList.add("hidden");
+      
+      document.getElementById("tab-emitir").className = "px-4 py-1.5 rounded font-semibold text-slate-300 hover:text-white";
+      document.getElementById("tab-historial").className = "px-4 py-1.5 rounded font-semibold text-slate-300 hover:text-white";
+      document.getElementById("tab-maestros").className = "px-4 py-1.5 rounded font-semibold text-slate-300 hover:text-white";
+
+      if(tab === 'emitir') {
+        document.getElementById("view-emitir").classList.remove("hidden");
+        document.getElementById("tab-emitir").className = "px-4 py-1.5 rounded font-semibold bg-cyan-700 text-white";
+      } else if(tab === 'historial') {
+        document.getElementById("view-historial").classList.remove("hidden");
+        document.getElementById("tab-historial").className = "px-4 py-1.5 rounded font-semibold bg-cyan-700 text-white";
+      } else if(tab === 'maestros') {
+        document.getElementById("view-maestros").classList.remove("hidden");
+        document.getElementById("tab-maestros").className = "px-4 py-1.5 rounded font-semibold bg-cyan-700 text-white";
+      }
+    }
+
+    function cargarMaestrosUI() {
+      // Clientes Select & List
+      const selCli = document.getElementById("select-cliente");
+      selCli.innerHTML = '<option value="">-- Cargar desde clientes guardados --</option>';
+      const listCli = document.getElementById("lista-maestro-clientes");
+      listCli.innerHTML = '';
+      clientesList.forEach((c, idx) => {
+        selCli.innerHTML += `<option value="${idx}">${c.razon}</option>`;
+        listCli.innerHTML += `
+          <div class="border border-slate-200 rounded p-2.5 text-xs bg-slate-50 relative group">
+            <button onclick="borrarRegistro('clientes', '${c.id}')" class="absolute top-2 right-2 text-slate-400 hover:text-rose-600 font-bold">🗑️</button>
+            <div class="font-bold text-slate-800">${c.razon}</div>
+            <div class="text-slate-500">CUIT: ${c.cuit} | ${c.localidad} - ${c.domicilio}</div>
+          </div>`;
+      });
+
+      // Patentes Select & List
+      const selPat = document.getElementById("select-patente");
+      selPat.innerHTML = '<option value="">-- Seleccionar Patente Guardada --</option>';
+      const listPat = document.getElementById("lista-maestro-patentes");
+      listPat.innerHTML = '';
+      patentesList.forEach((p, idx) => {
+        selPat.innerHTML += `<option value="${idx}">${p.patente} - ${p.transportista}</option>`;
+        listPat.innerHTML += `
+          <div class="border border-slate-200 rounded p-2.5 text-xs bg-slate-50 relative group">
+            <button onclick="borrarRegistro('patentes', '${p.id}')" class="absolute top-2 right-2 text-slate-400 hover:text-rose-600 font-bold">🗑️</button>
+            <div class="font-mono font-bold text-blue-800">${p.patente}</div>
+            <div class="text-slate-700 font-semibold">${p.transportista}</div>
+            <div class="text-slate-500">CUIT: ${p.cuit} | ${p.domicilio}</div>
+          </div>`;
+      });
+
+      // Materiales Select & List
+      const selMat = document.getElementById("select-material");
+      selMat.innerHTML = '<option value="">-- Insertar material precargado --</option>';
+      const listMat = document.getElementById("lista-maestro-materiales");
+      listMat.innerHTML = '';
+      materialesList.forEach((m, idx) => {
+        const descripcion = m.desc || "Material";
+        selMat.innerHTML += `<option value="${idx}">${descripcion} (${m.unidad})</option>`;
+        listMat.innerHTML += `
+          <div class="border border-slate-200 rounded p-2.5 text-xs bg-slate-50 flex justify-between items-center">
+            <div>
+              <div class="font-bold text-slate-800">${descripcion}</div>
+              <div class="text-slate-500">Unidad: ${m.unidad}</div>
+            </div>
+            <button onclick="borrarRegistro('materiales', '${m.id}')" class="text-slate-400 hover:text-rose-600 font-bold">🗑️</button>
+          </div>`;
+      });
+    }
+
+    // MODALES & AGREGAR DIRECTO A FIREBASE
+    function abrirModalCliente() { document.getElementById("modal-cliente").classList.remove("hidden"); }
+    function cerrarModalCliente() { document.getElementById("modal-cliente").classList.add("hidden"); }
+    async function guardarNuevoCliente() {
+      const razon = document.getElementById("m-cli-razon").value.trim().toUpperCase();
+      const cuit = document.getElementById("m-cli-cuit").value.trim();
+      const localidad = document.getElementById("m-cli-localidad").value.trim();
+      const domicilio = document.getElementById("m-cli-domicilio").value.trim();
+      if(!razon) return alert("Ingresa la razón social");
+      
+      if(window.cloudDB) {
+        await window.firestoreMethods.addDoc(window.firestoreMethods.collection(window.cloudDB, "clientes"), { razon, cuit, localidad, domicilio });
+      }
+      cerrarModalCliente();
+      document.getElementById("m-cli-razon").value = "";
+      document.getElementById("m-cli-cuit").value = "";
+      document.getElementById("m-cli-localidad").value = "";
+      document.getElementById("m-cli-domicilio").value = "";
+    }
+
+    function abrirModalPatente() { document.getElementById("modal-patente").classList.remove("hidden"); }
+    function cerrarModalPatente() { document.getElementById("modal-patente").classList.add("hidden"); }
+    async function guardarNuevaPatente() {
+      const patente = document.getElementById("m-tra-patente").value.trim().toUpperCase();
+      const transportista = document.getElementById("m-tra-nombre").value.trim().toUpperCase();
+      const cuit = document.getElementById("m-tra-cuit").value.trim();
+      const domicilio = document.getElementById("m-tra-domicilio").value.trim();
+      if(!patente) return alert("Ingresa la patente");
+
+      if(window.cloudDB) {
+        await window.firestoreMethods.addDoc(window.firestoreMethods.collection(window.cloudDB, "patentes"), { patente, transportista, cuit, domicilio });
+      }
+      cerrarModalPatente();
+      document.getElementById("m-tra-patente").value = "";
+      document.getElementById("m-tra-nombre").value = "";
+      document.getElementById("m-tra-cuit").value = "";
+      document.getElementById("m-tra-domicilio").value = "";
+    }
+
+    function abrirModalMaterial() { document.getElementById("modal-material").classList.remove("hidden"); }
+    function cerrarModalMaterial() { document.getElementById("modal-material").classList.add("hidden"); }
+    async function guardarNuevoMaterial() {
+      const desc = document.getElementById("m-mat-desc").value.trim();
+      const unidad = document.getElementById("m-mat-unidad").value;
+      if(!desc) return alert("Ingresa el nombre del material");
+
+      if(window.cloudDB) {
+        await window.firestoreMethods.addDoc(window.firestoreMethods.collection(window.cloudDB, "materiales"), { desc, unidad });
+      }
+      cerrarModalMaterial();
+      document.getElementById("m-mat-desc").value = "";
+    }
+
+    async function borrarRegistro(coleccion, id) {
+      if(!confirm("¿Deseas eliminar este registro?")) return;
+      if(window.cloudDB && id) {
+        await window.firestoreMethods.deleteDoc(window.firestoreMethods.doc(window.cloudDB, coleccion, id));
+      }
+    }
+
+    // AUTOCOMPLETAR
+    function seleccionarCliente(idx) {
+      if(idx === "") return;
+      const c = clientesList[idx];
+      document.getElementById("cli-razon").value = c.razon || "";
+      document.getElementById("cli-localidad").value = c.localidad || "";
+      document.getElementById("cli-domicilio").value = c.domicilio || "";
+      document.getElementById("cli-cuit").value = c.cuit || "";
+    }
+
+    function seleccionarPatente(idx) {
+      if(idx === "") return;
+      const p = patentesList[idx];
+      document.getElementById("tra-patente").value = p.patente || "";
+      document.getElementById("tra-nombre").value = p.transportista || "";
+      document.getElementById("tra-cuit").value = p.cuit || "";
+      document.getElementById("tra-domicilio").value = p.domicilio || "";
+    }
+
+    function insertarMaterial(idx) {
+      if(idx === "") return;
+      const m = materialesList[idx];
+      agregarFilaItem(30, m.unidad, m.desc);
+      document.getElementById("select-material").value = "";
+    }
+
+    function agregarFilaItem(cant = 30, unidad = "m3", desc = "") {
+      const tbody = document.getElementById("items-tbody");
+      const tr = document.createElement("tr");
+      tr.className = "border-b border-slate-100";
+      tr.innerHTML = `
+        <td class="py-1.5 pr-2"><input type="number" step="any" value="${cant}" class="item-cant w-full border border-slate-300 rounded px-2 py-1 text-sm font-semibold"></td>
+        <td class="py-1.5 pr-2"><input type="text" value="${unidad}" class="item-unidad w-full border border-slate-300 rounded px-2 py-1 text-sm"></td>
+        <td class="py-1.5 pr-2"><input type="text" value="${desc}" class="item-desc w-full border border-slate-300 rounded px-2 py-1 text-sm uppercase"></td>
+        <td class="py-1.5 text-center"><button onclick="eliminarFila(this)" class="text-slate-400 hover:text-rose-600 font-bold">×</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    function eliminarFila(btn) {
+      const tr = btn.closest("tr");
+      if(document.querySelectorAll("#items-tbody tr").length > 1) tr.remove();
+    }
+
+    // MODAL IMPORTADOR
+    function abrirModalImportador() { document.getElementById("modal-importador").classList.remove("hidden"); }
+    function cerrarModalImportador() { document.getElementById("modal-importador").classList.add("hidden"); }
+
+    function procesarTextoPegado() {
+      const texto = document.getElementById("import-paste-area").value.trim();
+      if(!texto) return alert("Pega las celdas copiadas de Excel primero.");
+
+      patentesAImportar = [];
+      const lineas = texto.split(/\r?\n/);
+
+      lineas.forEach(lin => {
+        let cols = lin.split("\t");
+        if(cols.length < 2) cols = lin.split(";");
+        if(cols.length < 2) cols = lin.split(",");
+
+        const pat = (cols[0] || "").trim().toUpperCase();
+        const transp = (cols[1] || "").trim();
+        const cuit = (cols[2] || "").trim();
+        const dom = (cols[3] || "").trim();
+
+        if(pat && pat.length >= 4) {
+          patentesAImportar.push({ patente: pat, transportista: transp, cuit: cuit, domicilio: dom });
+        }
+      });
+
+      const tbody = document.getElementById("import-preview-tbody");
+      tbody.innerHTML = "";
+      patentesAImportar.forEach(p => {
+        tbody.innerHTML += `
+          <tr class="border-b border-slate-100">
+            <td class="p-2 font-mono font-bold text-blue-900">${p.patente}</td>
+            <td class="p-2">${p.transportista}</td>
+            <td class="p-2 font-mono">${p.cuit}</td>
+            <td class="p-2 text-slate-500">${p.domicilio}</td>
+          </tr>`;
+      });
+
+      document.getElementById("import-contador").innerText = `${patentesAImportar.length} patentes listas`;
+      document.getElementById("btn-confirmar-import").disabled = patentesAImportar.length === 0;
+    }
+
+    async function guardarPatentesImportadas() {
+      if(patentesAImportar.length === 0) return;
+      const btn = document.getElementById("btn-confirmar-import");
+      btn.innerText = "Sincronizando con la Nube...";
+      btn.disabled = true;
+
+      if(window.cloudDB) {
+        const db = window.cloudDB;
+        const { collection, addDoc } = window.firestoreMethods;
+        for(const item of patentesAImportar) {
+          await addDoc(collection(db, "patentes"), item);
+        }
+      }
+
+      cerrarModalImportador();
+      alert(`¡Se importaron ${patentesAImportar.length} patentes con éxito!`);
+      btn.innerText = "Confirmar e Importar a la Nube";
+      btn.disabled = false;
+    }
+
+    // IMPRESION BROTHER HL-1212W
+    function guardarEImprimir() { guardarRemito(true); }
+
+    async function guardarRemito(dispararImpresion = false) {
+      const numero = document.getElementById("remito-numero").value.trim();
+      const fecha = document.getElementById("remito-fecha").value;
+      const cliente = {
+        razon: document.getElementById("cli-razon").value.trim(),
+        localidad: document.getElementById("cli-localidad").value.trim(),
+        cuit: document.getElementById("cli-cuit").value.trim(),
+        domicilio: document.getElementById("cli-domicilio").value.trim()
+      };
+      const transporte = {
+        patente: document.getElementById("tra-patente").value.trim(),
+        cuit: document.getElementById("tra-cuit").value.trim(),
+        transportista: document.getElementById("tra-nombre").value.trim(),
+        domicilio: document.getElementById("tra-domicilio").value.trim()
+      };
+      const obs = document.getElementById("remito-obs").value.trim();
+
+      const items = [];
+      document.querySelectorAll("#items-tbody tr").forEach(tr => {
+        items.push({
+          cant: tr.querySelector(".item-cant").value,
+          unidad: tr.querySelector(".item-unidad").value,
+          desc: tr.querySelector(".item-desc").value
+        });
+      });
+
+      const nuevoRemito = { numero, fecha, cliente, transporte, obs, items, creado: new Date().toISOString() };
+
+      if(window.cloudDB) {
+        await window.firestoreMethods.addDoc(window.firestoreMethods.collection(window.cloudDB, "remitos"), nuevoRemito);
+      }
+
+      if(dispararImpresion) {
+        armarZonaImpresion(nuevoRemito);
+        setTimeout(() => { window.print(); }, 250);
+      } else {
+        alert("Remito guardado correctamente.");
+      }
+    }
+
+    function armarZonaImpresion(data) {
+      const zone = document.getElementById("printable-voucher-zone");
+      const ox = parseFloat(document.getElementById("offset-x").value) || 0;
+      const oy = parseFloat(document.getElementById("offset-y").value) || 0;
+
+      let html = `<div style="position: absolute; left: ${ox}mm; top: ${oy}mm; width: 220mm;">`;
+
+      for(let i = 0; i < 3; i++) {
+        const topBase = i * 113.33;
+        html += `
+          <div style="position: absolute; top: ${topBase}mm; left: 0; width: 220mm; height: 113.33mm; font-size: 11px; line-height: 1.2;">
+            <div style="position: absolute; top: 14mm; left: 168mm; font-weight: bold;">${data.fecha}</div>
+            <div style="position: absolute; top: 27mm; left: 24mm; font-weight: bold; width: 100mm;">${data.cliente.razon}</div>
+            <div style="position: absolute; top: 27mm; left: 155mm;">${data.cliente.localidad}</div>
+            <div style="position: absolute; top: 32mm; left: 24mm; width: 100mm;">${data.cliente.domicilio}</div>
+            <div style="position: absolute; top: 32mm; left: 155mm; font-weight: bold;">${data.cliente.cuit}</div>
+            <div style="position: absolute; top: 38mm; left: 24mm; font-weight: bold;">${data.transporte.patente}</div>
+            <div style="position: absolute; top: 38mm; left: 155mm;">${data.transporte.cuit}</div>
+            <div style="position: absolute; top: 43mm; left: 28mm; width: 100mm;">${data.transporte.transportista}</div>
+            <div style="position: absolute; top: 47mm; left: 24mm;">${data.transporte.domicilio}</div>
+            <div style="position: absolute; top: 57mm; left: 15mm; width: 190mm;">
+              ${data.items.map(it => `
+                <div style="display: flex; margin-bottom: 2mm;">
+                  <div style="width: 25mm; font-weight: bold;">${it.cant} ${it.unidad}</div>
+                  <div style="width: 160mm;">${it.desc}</div>
+                </div>
+              `).join('')}
+            </div>
+            <div style="position: absolute; top: 96mm; left: 35mm; width: 120mm; font-weight: bold;">${data.obs || ''}</div>
+          </div>
+        `;
+      }
+
+      html += `</div>`;
+      zone.innerHTML = html;
+    }
+
+    // HISTORIAL & EXCEL
+    function cargarHistorialUI() {
+      const tbody = document.getElementById("historial-tbody");
+      document.getElementById("badge-count").innerText = remitosList.length;
+      if(remitosList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-400">No hay remitos registrados.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = "";
+      remitosList.forEach(r => {
+        const matResumen = r.items ? r.items.map(i => `${i.cant} ${i.unidad} - ${i.desc}`).join("<br>") : "-";
+        tbody.innerHTML += `
+          <tr class="border-b border-slate-100 hover:bg-slate-50">
+            <td class="py-3 px-4 font-semibold text-slate-700">${r.fecha}</td>
+            <td class="py-3 px-4 font-mono font-bold text-cyan-800">${r.numero || "-"}</td>
+            <td class="py-3 px-4 font-bold text-slate-800">${r.cliente?.razon || "-"}</td>
+            <td class="py-3 px-4 font-mono font-bold text-blue-700">${r.transporte?.patente || "-"}</td>
+            <td class="py-3 px-4 text-xs">${matResumen}</td>
+            <td class="py-3 px-4 text-center">
+              <button onclick='reimprimirRemito(${JSON.stringify(r)})' class="bg-cyan-100 text-cyan-800 hover:bg-cyan-200 text-xs px-2.5 py-1 rounded font-bold">Imprimir</button>
+            </td>
+          </tr>`;
+      });
+    }
+
+    function reimprimirRemito(r) {
+      armarZonaImpresion(r);
+      setTimeout(() => { window.print(); }, 250);
+    }
+
+    function exportarExcelCSV() {
+      if(remitosList.length === 0) return alert("No hay remitos para exportar.");
+      let csv = "FECHA;NUMERO;CLIENTE;LOCALIDAD;DOMICILIO CLIENTE;CUIT CLIENTE;PATENTE;TRANSPORTISTA;CUIT TRANSPORTE;DOMICILIO TRANSPORTE;CANTIDAD;UNIDAD;MATERIAL;OBSERVACIONES\r\n";
+      remitosList.forEach(r => {
+        if(r.items && r.items.length > 0) {
+          r.items.forEach(it => {
+            csv += `"${r.fecha}";"${r.numero}";"${r.cliente?.razon || ''}";"${r.cliente?.localidad || ''}";"${r.cliente?.domicilio || ''}";"${r.cliente?.cuit || ''}";"${r.transporte?.patente || ''}";"${r.transporte?.transportista || ''}";"${r.transporte?.cuit || ''}";"${r.transporte?.domicilio || ''}";"${it.cant}";"${it.unidad}";"${it.desc}";"${r.obs || ''}"\r\n`;
+          });
+        }
+      });
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `Remitos_Ranelagh_${new Date().toISOString().slice(0,10)}.csv`;
+      link.click();
+    }
+  </script>
+</body>
+</html>
