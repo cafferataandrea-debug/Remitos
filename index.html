@@ -1043,7 +1043,15 @@
       columnasX.forEach((colX) => {
         // 1. FECHA (Baja a 20mm para centrarse dentro del recuadro 'FECHA:')
         doc.setFontSize(8);
-        doc.text(data.fecha || '', colX + 70, 20.5 + oy);
+        // Formatea la fecha de AAAA-MM-DD a DD/MM/AAAA
+let fechaFormateada = data.fecha || '';
+if (fechaFormateada.includes('-')) {
+  const partes = fechaFormateada.split('-');
+  if (partes.length === 3) {
+    fechaFormateada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+  }
+}
+doc.text(fechaFormateada, colX + 70, 20.5 + oy);
 
         // 2. SEÑOR(ES) y LOCALIDAD (Bajan a 33mm sobre la línea punteada)
         doc.setFontSize(7.5);
