@@ -1010,7 +1010,7 @@
       }
     }
 
-   // MOTOR DE IMPRESIÓN PDF (CALIBRACIÓN ASIMÉTRICA POR CUERPO)
+   // MOTOR DE IMPRESIÓN PDF (CALIBRADO AL TALONARIO FÍSICO REAL)
     function generarPDFLogisvial(data) {
       const { jsPDF } = window.jspdf;
 
@@ -1023,71 +1023,68 @@
       const ox = parseFloat(document.getElementById("offset-x").value) || 0;
       const oy = parseFloat(document.getElementById("offset-y").value) || 0;
 
-      // Calibración individual de inicio horizontal para cada cuerpo:
-      // Cuerpo 1 (Original): Se retrasó a 2 mm para compensar el desfasaje a la derecha
-      // Cuerpo 2 (Duplicado): 118 mm
-      // Cuerpo 3 (Triplicado): 232 mm
-      const columnasX = [2 + ox, 118 + ox, 232 + ox];
+      // Ancho y punto de partida milimétrico de cada cuerpo (Original, Duplicado, Triplicado)
+      const columnasX = [3 + ox, 116 + ox, 228 + ox];
 
       doc.setFont("courier", "bold");
 
       columnasX.forEach((colX) => {
-        // 1. FECHA (Centrada en el casillero 'FECHA:')
+        // 1. FECHA (Baja a 20mm para centrarse dentro del recuadro 'FECHA:')
         doc.setFontSize(8);
-        doc.text(data.fecha || '', colX + 90, 23 + oy, { align: "right" });
+        doc.text(data.fecha || '', colX + 70, 20.5 + oy);
 
-        // 2. SEÑOR(ES) y LOCALIDAD
-        doc.setFontSize(8);
-        const razonCorta = doc.splitTextToSize(data.cliente?.razon || '', 50)[0] || '';
-        doc.text(razonCorta, colX + 16, 31 + oy);
+        // 2. SEÑOR(ES) y LOCALIDAD (Bajan a 33mm sobre la línea punteada)
+        doc.setFontSize(7.5);
+        const razonCorta = doc.splitTextToSize(data.cliente?.razon || '', 48)[0] || '';
+        doc.text(razonCorta, colX + 16, 33 + oy);
         if (data.cliente?.localidad) {
-          doc.text(data.cliente.localidad, colX + 63, 31 + oy);
+          doc.text(data.cliente.localidad, colX + 66, 33 + oy);
         }
 
-        // 3. DOMICILIO y CUIT CLIENTE
+        // 3. DOMICILIO y CUIT CLIENTE (Bajan a 39mm)
         doc.setFontSize(7.5);
         const domiLineas = doc.splitTextToSize(data.cliente?.domicilio || '', 48);
-        doc.text(domiLineas[0] || '', colX + 16, 37 + oy);
+        doc.text(domiLineas[0] || '', colX + 16, 39 + oy);
         if (data.cliente?.cuit) {
-          doc.text(data.cliente.cuit, colX + 63, 37 + oy);
+          doc.text(data.cliente.cuit, colX + 66, 39 + oy);
         }
 
-        // 4. TRANSPORTE: PATENTE
+        // 4. TRANSPORTE: PATENTE (Baja a 45mm dentro de su casillero)
         doc.setFontSize(8);
-        doc.text(data.transporte?.patente || '', colX + 16, 42.5 + oy);
+        doc.text(data.transporte?.patente || '', colX + 16, 45.5 + oy);
 
-        // 5. CUIT TRANSPORTE
+        // 5. CUIT TRANSPORTE (En su casillero C.U.I.T. Nº a la derecha)
         if (data.transporte?.cuit) {
           doc.setFontSize(7.5);
-          doc.text(data.transporte.cuit, colX + 63, 45 + oy);
+          doc.text(data.transporte.cuit, colX + 66, 45.5 + oy);
         }
 
-        // 6. TRANSPORTISTA / CHOFER
+        // 6. TRANSPORTISTA / CHOFER (Baja a 51mm en la fila 'Transportista:')
         if (data.transporte?.transportista) {
           doc.setFontSize(7.5);
-          const choferCorto = doc.splitTextToSize(data.transporte.transportista, 45)[0] || '';
-          doc.text(choferCorto, colX + 18, 47.5 + oy);
+          const choferCorto = doc.splitTextToSize(data.transporte.transportista, 48)[0] || '';
+          doc.text(choferCorto, colX + 18, 51 + oy);
         }
 
-        // 7. DOMICILIO FLETERO
+        // 7. DOMICILIO FLETERO (si existe)
         if (data.transporte?.domicilio) {
           doc.setFontSize(7);
-          doc.text(data.transporte.domicilio, colX + 16, 52 + oy);
+          doc.text(data.transporte.domicilio, colX + 16, 56.5 + oy);
         }
 
-        // 8. MERCADERÍA / RENGLONES (CANTIDAD Y DESCRIPCIÓN)
+        // 8. MERCADERÍA / RENGLONES (Baja a 69mm para arrancar en el primer renglón del cuadro)
         doc.setFontSize(8.5);
-        let yItem = 66 + oy;
+        let yItem = 69 + oy;
         (data.items || []).forEach(it => {
-          doc.text(String(it.cant || ''), colX + 5, yItem);
+          doc.text(String(it.cant || ''), colX + 4, yItem);
           doc.text(it.desc || '', colX + 18, yItem);
           yItem += 6.5;
         });
 
-        // 9. OBSERVACIONES
+        // 9. OBSERVACIONES (En el recuadro OBSERVACIONES inferior)
         if (data.obs) {
-          doc.setFontSize(8);
-          doc.text(data.obs, colX + 12, 114 + oy);
+          doc.setFontSize(7.5);
+          doc.text(data.obs, colX + 12, 116 + oy);
         }
       });
 
