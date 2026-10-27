@@ -982,11 +982,12 @@
           doc.text(data.cliente.localidad, colX + 62, 29 + oy);
         }
 
-        // 3. DOMICILIO y CUIT CLIENTE (Líneas separadas para evitar que se pisen)
+      // 3. DOMICILIO y CUIT CLIENTE (Con ancho máximo de 56 mm para no pisar el CUIT)
         doc.setFontSize(8);
-        doc.text(data.cliente?.domicilio || '', colX + 10, 35 + oy);
+        const domiLineas = doc.splitTextToSize(data.cliente?.domicilio || '', 56);
+        doc.text(domiLineas[0] || '', colX + 8, 36.5 + oy); // Primera línea de domicilio
         if (data.cliente?.cuit) {
-          doc.text(data.cliente.cuit, colX + 62, 35 + oy);
+          doc.text(data.cliente.cuit, colX + 66, 36.5 + oy);
         }
 
         // 4. PATENTE y CUIT FLETERO
