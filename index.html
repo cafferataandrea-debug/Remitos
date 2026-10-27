@@ -950,71 +950,75 @@
       }
     }
 
-    // MOTOR DE IMPRESIÓN PDF (CALIBRADO LOGISVIAL 59.41 x 42 cm / A2 LANDSCAPE)
+   // MOTOR DE IMPRESIÓN PDF (CALIBRADO EXACTO 340 x 220 mm)
     function generarPDFLogisvial(data) {
       const { jsPDF } = window.jspdf;
 
+      // Tamaño exacto del talonario físico: 340 mm ancho x 220 mm alto
       const doc = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
-        format: [594, 420]
+        format: [340, 220]
       });
 
       const ox = parseFloat(document.getElementById("offset-x").value) || 0;
       const oy = parseFloat(document.getElementById("offset-y").value) || 0;
 
-      // Las 3 columnas (Original, Duplicado, Triplicado) distribuidas horizontalmente
-      const columnasX = [45 + ox, 235 + ox, 425 + ox];
+      // Las 3 columnas (Original, Duplicado, Triplicado) distribuidas a lo ancho de los 340 mm
+      // Cada columna tiene un ancho útil de aprox. 113.3 mm
+      const columnasX = [12 + ox, 125 + ox, 238 + ox];
 
-      const yFecha = 120 + oy;
-      const yCliente = 145 + oy;
-      const yHeaderMat = 215 + oy;
-      const yMaterial = 230 + oy;
-      const yPatente = 295 + oy;
+      // Alturas relativas a los 220 mm de alto del talonario
+      const yFecha = 22 + oy;
+      const yCliente = 36 + oy;
+      const yHeaderMat = 78 + oy;
+      const yMaterial = 88 + oy;
+      const yPatente = 125 + oy;
 
       columnasX.forEach((colX) => {
         // 1. Fecha
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(16);
-        doc.text(data.fecha || '', colX + 80, yFecha, { align: "right" });
+        doc.setFontSize(11);
+        doc.text(data.fecha || '', colX + 75, yFecha, { align: "right" });
 
         // 2. Cliente (Señor/es)
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(18);
+        doc.setFontSize(12);
         doc.text(data.cliente?.razon || "Particular", colX, yCliente);
 
         // 3. Encabezados "Material" y Unidad (TON/M3)
-        const primerItem = (data.items && data.items.length > 0) ? data.items[0] : { cant: '', unidad: 'TON', desc: '' };
+        const primerItem = (data.items && data.items.length > 0) ? data.items[0] : { cant: '', unidad: 'M3', desc: '' };
         doc.setFont("times", "bold");
-        doc.setFontSize(26);
+        doc.setFontSize(15);
         doc.text("Material", colX, yHeaderMat);
-        doc.text((primerItem.unidad || "TON").toUpperCase(), colX + 50, yHeaderMat);
+        doc.text((primerItem.unidad || "M3").toUpperCase(), colX + 32, yHeaderMat);
 
         // 4. Detalle de Material y Cantidad
         doc.setFont("times", "normal");
-        doc.setFontSize(24);
-        const matLines = doc.splitTextToSize(primerItem.desc || '', 45);
+        doc.setFontSize(14);
+        const matLines = doc.splitTextToSize(primerItem.desc || '', 30);
         doc.text(matLines, colX, yMaterial);
 
         doc.setFont("times", "bold");
-        doc.text(String(primerItem.cant || ''), colX + 50, yMaterial + 5);
+        doc.text(String(primerItem.cant || ''), colX + 32, yMaterial + 4);
 
         // 5. Patente Transporte
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(15);
+        doc.setFontSize(10);
         doc.text(`Patente Transporte: ${data.transporte?.patente || ''}`, colX, yPatente);
 
         // 6. Observaciones
         if (data.obs) {
           doc.setFont("helvetica", "normal");
-          doc.setFontSize(11);
-          doc.text(data.obs, colX, yPatente + 12);
+          doc.setFontSize(8);
+          doc.text(data.obs, colX, yPatente + 8);
         }
       });
 
-      // Abre directamente el PDF en una pestaña nueva con el visor nativo de Safari/Chrome
+      // Abre el PDF adaptado en una pestaña nueva
       const blobUrl = URL.createObjectURL(doc.output('blob'));
       window.open(blobUrl, '_blank');
+    
     }
 
     function renderizarHistorial(lista) {
