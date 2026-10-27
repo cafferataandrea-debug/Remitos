@@ -950,10 +950,11 @@
       }
     }
 
-   // MOTOR DE IMPRESIÓN PDF (CALIBRADO EXACTO 340 x 220 mm - SIN SOLAPAMIENTO DE CAMPOS)
+   // MOTOR DE IMPRESIÓN PDF (CALIBRADO EXACTO 340 x 220 mm - TIPOGRAFÍA COURIER COMPLETO)
     function generarPDFLogisvial(data) {
       const { jsPDF } = window.jspdf;
 
+      // Tamaño exacto del papel físico: 340 mm ancho x 220 mm alto
       const doc = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
@@ -963,72 +964,64 @@
       const ox = parseFloat(document.getElementById("offset-x").value) || 0;
       const oy = parseFloat(document.getElementById("offset-y").value) || 0;
 
-      // Las 3 columnas (Original, Duplicado, Triplicado)
-      const columnasX = [10 + ox, 122 + ox, 234 + ox];
+      // Las 3 columnas (Original, Duplicado, Triplicado) distribuidas en los 340 mm
+      const columnasX = [12 + ox, 125 + ox, 238 + ox];
 
+      // Tipografía monoespaciada tipo máquina de escribir
       doc.setFont("courier", "bold");
 
       columnasX.forEach((colX) => {
-        // 1. FECHA
+        // 1. FECHA (Arriba a la derecha)
         doc.setFontSize(9);
-        doc.text(data.fecha || '', colX + 90, 22 + oy, { align: "right" });
+        doc.text(data.fecha || '', colX + 78, 22 + oy, { align: "right" });
 
-        // 2. RAZÓN SOCIAL y LOCALIDAD
+        // 2. SEÑOR(ES) / RAZÓN SOCIAL y LOCALIDAD
         doc.setFontSize(8.5);
-        // Limitar ancho del nombre del cliente para que no pise la localidad
-        const razonCorta = doc.splitTextToSize(data.cliente?.razon || '', 55)[0] || '';
-        doc.text(razonCorta, colX + 8, 30 + oy);
+        doc.text(data.cliente?.razon || '', colX + 10, 29 + oy);
         if (data.cliente?.localidad) {
-          doc.text(data.cliente.localidad, colX + 66, 30 + oy);
+          doc.text(data.cliente.localidad, colX + 62, 29 + oy);
         }
 
-        // 3. DOMICILIO y CUIT CLIENTE (Con ancho máximo de 56 mm para no pisar el CUIT)
+        // 3. DOMICILIO y CUIT CLIENTE (Líneas separadas para evitar que se pisen)
         doc.setFontSize(8);
-        const domiLineas = doc.splitTextToSize(data.cliente?.domicilio || '', 56);
-        doc.text(domiLineas[0] || '', colX + 8, 36.5 + oy); // Primera línea de domicilio
+        doc.text(data.cliente?.domicilio || '', colX + 10, 35 + oy);
         if (data.cliente?.cuit) {
-          doc.text(data.cliente.cuit, colX + 66, 36.5 + oy);
+          doc.text(data.cliente.cuit, colX + 62, 35 + oy);
         }
 
         // 4. PATENTE y CUIT FLETERO
         doc.setFontSize(8.5);
-        doc.text(data.transporte?.patente || '', colX + 8, 43 + oy);
+        doc.text(data.transporte?.patente || '', colX + 10, 41 + oy);
         if (data.transporte?.cuit) {
-          doc.text(data.transporte.cuit, colX + 66, 43 + oy);
+          doc.text(data.transporte.cuit, colX + 62, 41 + oy);
         }
 
         // 5. TRANSPORTISTA / CHOFER
         if (data.transporte?.transportista) {
           doc.setFontSize(8);
-          const choferCorto = doc.splitTextToSize(data.transporte.transportista, 80)[0] || '';
-          doc.text(choferCorto, colX + 10, 49 + oy);
+          doc.text(data.transporte.transportista, colX + 12, 46 + oy);
         }
 
         // 6. DOMICILIO FLETERO (si existe)
         if (data.transporte?.domicilio) {
           doc.setFontSize(7.5);
-          doc.text(data.transporte.domicilio, colX + 8, 54 + oy);
+          doc.text(data.transporte.domicilio, colX + 10, 50 + oy);
         }
 
         // 7. MERCADERÍA / RENGLONES DE MATERIALES
         doc.setFontSize(8.5);
-        let yItem = 65 + oy;
+        let yItem = 60 + oy;
         (data.items || []).forEach(it => {
           doc.text(`${it.cant} ${it.unidad}`, colX + 6, yItem);
           doc.text(it.desc || '', colX + 26, yItem);
-          yItem += 6;
+          yItem += 5; // Separación entre renglones si hay más de uno
         });
 
-        // 8. OBSERVACIONES
+        // 8. OBSERVACIONES (Abajo)
         if (data.obs) {
           doc.setFontSize(8);
-          doc.text(data.obs, colX + 12, 105 + oy);
+          doc.text(data.obs, colX + 15, 100 + oy);
         }
-      });
-
-      const blobUrl = URL.createObjectURL(doc.output('blob'));
-      window.open(blobUrl, '_blank');
-    }
       });
 
       // Abre el PDF en una pestaña nueva listo para imprimir
