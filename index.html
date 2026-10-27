@@ -1092,11 +1092,6 @@
       window.open(blobUrl, '_blank');
     }
 
-      // Abre el PDF en una pestaña nueva listo para imprimir
-      const blobUrl = URL.createObjectURL(doc.output('blob'));
-      window.open(blobUrl, '_blank');
-    }
-
     function renderizarHistorial(lista) {
       const tbody = document.getElementById("historial-tbody");
       document.getElementById("badge-count").innerText = lista.length;
