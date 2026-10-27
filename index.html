@@ -528,19 +528,16 @@
         });
 
         onSnapshot(collection(db, "materiales"), (snap) => {
-          materialesList = [];
-          snap.forEach(d => {
-            const data = d.data();
-            const nombre = data.desc || data.nombre || data.descripcion || "Material";
-            const unidad = data.unidad || "m3";
-            materialesList.push({ id: d.id, desc: nombre, unidad: unidad });
-          });
-          cargarMaestrosUI();
-    });
-  });
-
-  function cargarHistorialReciente() {
-  
+        materialesList = [];
+        snap.forEach(d => {
+          const data = d.data();
+          const nombre = data.desc || data.nombre || data.descripcion || "Material";
+          const unidad = data.unidad || "";
+          materialesList.push({ id: d.id, desc: nombre, unidad: unidad });
+        });
+        cargarMaestrosUI();
+      });
+    }
 
     function cargarHistorialReciente() {
       if (!window.cloudDB) return;
