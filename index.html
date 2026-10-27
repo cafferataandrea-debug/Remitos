@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ranelagh Construcciones S.A. - Remitos Preimpresos</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- jsPDF para generación idéntica del PDF (Formato 34 x 22 cm /  Landscape de Logisvial) -->
+  <!-- jsPDF para generación idéntica del PDF (Formato 34 x 22 cm / Landscape de Logisvial) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <script type="module">
@@ -63,9 +63,9 @@
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
       <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex justify-between items-center flex-wrap gap-4">
         <div>
-  <h2 class="font-bold text-slate-800 text-lg">Emisión de Remito Sobre Formulario Continuo</h2>
-  <p class="text-xs text-slate-500">Impresión calibrada directa en 3 cuerpos para formulario preimpreso.</p>
-</div>
+          <h2 class="font-bold text-slate-800 text-lg">Emisión de Remito Sobre Formulario Continuo</h2>
+          <p class="text-xs text-slate-500">Impresión calibrada directa en 3 cuerpos para formulario preimpreso.</p>
+        </div>
         <div class="flex items-center gap-3">
           <label class="text-xs font-semibold text-slate-600">Número Impreso en Papel:</label>
           <input type="text" id="remito-numero" value="00105001" placeholder="Ej: 00105001" class="border border-slate-300 rounded px-3 py-1 text-sm font-mono font-bold w-36 text-center text-slate-900 focus:ring-2 focus:ring-cyan-600 outline-none">
@@ -185,9 +185,9 @@
       <div class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex justify-between items-center flex-wrap gap-4">
         <div class="flex items-center gap-3">
           <label class="text-xs font-semibold text-slate-600">Calibración Offset PDF:</label>
-         <input type="number" id="offset-x" value="0" step="1" onchange="localStorage.setItem('rc_offset_x', this.value)" class="w-14 border rounded px-1.5 py-0.5 text-center font-mono">
-
-<input type="number" id="offset-y" value="0" step="1" onchange="localStorage.setItem('rc_offset_y', this.value)" class="w-14 border rounded px-1.5 py-0.5 text-center font-mono">
+          <input type="number" id="offset-x" value="0" step="1" onchange="localStorage.setItem('rc_offset_x', this.value)" class="w-14 border rounded px-1.5 py-0.5 text-center font-mono">
+          <input type="number" id="offset-y" value="0" step="1" onchange="localStorage.setItem('rc_offset_y', this.value)" class="w-14 border rounded px-1.5 py-0.5 text-center font-mono">
+        </div>
         <div class="flex gap-3">
           <button id="btn-guardar-solo" onclick="guardarRemito(false)" class="bg-slate-700 hover:bg-slate-800 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow-sm transition-all">Guardar sin Imprimir</button>
           <button id="btn-imprimir" onclick="guardarEImprimir()" class="bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-bold px-6 py-2 rounded-lg text-sm shadow flex items-center gap-2 transition-all">
@@ -419,6 +419,16 @@
       document.getElementById("filtro-desde").value = hoy;
       document.getElementById("filtro-hasta").value = hoy;
 
+      // Carga offsets guardados en esta PC
+      const savedOx = localStorage.getItem("rc_offset_x");
+      const savedOy = localStorage.getItem("rc_offset_y");
+      if (savedOx !== null && document.getElementById("offset-x")) {
+        document.getElementById("offset-x").value = savedOx;
+      }
+      if (savedOy !== null && document.getElementById("offset-y")) {
+        document.getElementById("offset-y").value = savedOy;
+      }
+
       document.addEventListener("click", (e) => {
         if (!e.target.closest("#search-cliente") && !e.target.closest("#dropdown-cliente")) {
           document.getElementById("dropdown-cliente").classList.add("hidden");
@@ -565,19 +575,7 @@
         cargarHistorialReciente();
       }
     }
-// Carga los offsets guardados previamente en esta PC
-    document.addEventListener("DOMContentLoaded", () => {
-      const savedOx = localStorage.getItem("rc_offset_x");
-      const savedOy = localStorage.getItem("rc_offset_y");
-      if (savedOx !== null && document.getElementById("offset-x")) {
-        document.getElementById("offset-x").value = savedOx;
-      }
-      if (savedOy !== null && document.getElementById("offset-y")) {
-        document.getElementById("offset-y").value = savedOy;
-      }
-    });
 
-    function switchTab(tabId) {
     function switchTab(tab) {
       document.getElementById("view-emitir").classList.add("hidden");
       document.getElementById("view-historial").classList.add("hidden");
@@ -987,7 +985,7 @@
 
       const nuevoRemito = { numero, fecha, cliente, transporte, obs, items, creado: new Date().toISOString() };
 
-      // >>> PEGAR AQUÍ: Guarda de inmediato en memoria local y actualiza la tabla en pantalla
+      // Guarda de inmediato en memoria local y actualiza la tabla en pantalla
       remitosList.unshift({ id: String(numero), ...nuevoRemito });
       localStorage.setItem("rc_remitos_cache", JSON.stringify(remitosList));
       renderizarHistorial(remitosList);
@@ -1022,7 +1020,7 @@
       }
     }
 
-   // MOTOR DE IMPRESIÓN PDF (CALIBRADO AL TALONARIO FÍSICO REAL)
+    // MOTOR DE IMPRESIÓN PDF (CALIBRADO AL TALONARIO FÍSICO REAL)
     function generarPDFLogisvial(data) {
       const { jsPDF } = window.jspdf;
 
@@ -1041,17 +1039,16 @@
       doc.setFont("courier", "bold");
 
       columnasX.forEach((colX) => {
-        // 1. FECHA (Baja a 20mm para centrarse dentro del recuadro 'FECHA:')
+        // 1. FECHA (Convierte de AAAA-MM-DD a DD/MM/AAAA)
         doc.setFontSize(8);
-        // Formatea la fecha de AAAA-MM-DD a DD/MM/AAAA
-let fechaFormateada = data.fecha || '';
-if (fechaFormateada.includes('-')) {
-  const partes = fechaFormateada.split('-');
-  if (partes.length === 3) {
-    fechaFormateada = `${partes[2]}/${partes[1]}/${partes[0]}`;
-  }
-}
-doc.text(fechaFormateada, colX + 70, 20.5 + oy);
+        let fechaFormateada = data.fecha || '';
+        if (fechaFormateada.includes('-')) {
+          const partes = fechaFormateada.split('-');
+          if (partes.length === 3) {
+            fechaFormateada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+          }
+        }
+        doc.text(fechaFormateada, colX + 70, 20.5 + oy);
 
         // 2. SEÑOR(ES) y LOCALIDAD (Bajan a 33mm sobre la línea punteada)
         doc.setFontSize(7.5);
@@ -1114,7 +1111,9 @@ doc.text(fechaFormateada, colX + 70, 20.5 + oy);
 
     function renderizarHistorial(lista) {
       const tbody = document.getElementById("historial-tbody");
-      document.getElementById("badge-count").innerText = lista.length;
+      const badge = document.getElementById("badge-count");
+      if (badge) badge.innerText = lista.length;
+      
       if(lista.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-400">No se encontraron remitos en este período.</td></tr>';
         return;
@@ -1171,7 +1170,8 @@ doc.text(fechaFormateada, colX + 70, 20.5 + oy);
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
       link.download = `Remitos_Ranelagh_${new Date().toISOString().slice(0,10)}.csv`;
-    link.click();
-  }
-}
-</script>
+      link.click();
+    }
+  </script>
+</body>
+</html>
