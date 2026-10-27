@@ -565,7 +565,19 @@
         cargarHistorialReciente();
       }
     }
+// Carga los offsets guardados previamente en esta PC
+    document.addEventListener("DOMContentLoaded", () => {
+      const savedOx = localStorage.getItem("rc_offset_x");
+      const savedOy = localStorage.getItem("rc_offset_y");
+      if (savedOx !== null && document.getElementById("offset-x")) {
+        document.getElementById("offset-x").value = savedOx;
+      }
+      if (savedOy !== null && document.getElementById("offset-y")) {
+        document.getElementById("offset-y").value = savedOy;
+      }
+    });
 
+    function switchTab(tabId) {
     function switchTab(tab) {
       document.getElementById("view-emitir").classList.add("hidden");
       document.getElementById("view-historial").classList.add("hidden");
