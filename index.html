@@ -1020,7 +1020,7 @@
       }
     }
 
-    // MOTOR DE IMPRESIÓN PDF (CALIBRADO AL TALONARIO FÍSICO REAL)
+    // MOTOR DE IMPRESIÓN PDF (CALIBRADO CON TIPOGRAFÍA MÁS GRANDE)
     function generarPDFLogisvial(data) {
       const { jsPDF } = window.jspdf;
 
@@ -1039,8 +1039,8 @@
       doc.setFont("courier", "bold");
 
       columnasX.forEach((colX) => {
-        // 1. FECHA (Convierte de AAAA-MM-DD a DD/MM/AAAA)
-        doc.setFontSize(8);
+        // 1. FECHA (Subió a 9 pt)
+        doc.setFontSize(9);
         let fechaFormateada = data.fecha || '';
         if (fechaFormateada.includes('-')) {
           const partes = fechaFormateada.split('-');
@@ -1050,57 +1050,57 @@
         }
         doc.text(fechaFormateada, colX + 70, 20.5 + oy);
 
-        // 2. SEÑOR(ES) y LOCALIDAD (Bajan a 33mm sobre la línea punteada)
-        doc.setFontSize(7.5);
-        const razonCorta = doc.splitTextToSize(data.cliente?.razon || '', 48)[0] || '';
+        // 2. SEÑOR(ES) y LOCALIDAD (Subió a 9 pt)
+        doc.setFontSize(9);
+        const razonCorta = doc.splitTextToSize(data.cliente?.razon || '', 46)[0] || '';
         doc.text(razonCorta, colX + 16, 33 + oy);
         if (data.cliente?.localidad) {
-          doc.text(data.cliente.localidad, colX + 66, 33 + oy);
+          doc.text(data.cliente.localidad, colX + 65, 33 + oy);
         }
 
-        // 3. DOMICILIO y CUIT CLIENTE (Bajan a 39mm)
-        doc.setFontSize(7.5);
-        const domiLineas = doc.splitTextToSize(data.cliente?.domicilio || '', 48);
+        // 3. DOMICILIO y CUIT CLIENTE (Subió a 8.5 pt)
+        doc.setFontSize(8.5);
+        const domiLineas = doc.splitTextToSize(data.cliente?.domicilio || '', 46);
         doc.text(domiLineas[0] || '', colX + 16, 39 + oy);
         if (data.cliente?.cuit) {
-          doc.text(data.cliente.cuit, colX + 66, 39 + oy);
+          doc.text(data.cliente.cuit, colX + 65, 39 + oy);
         }
 
-        // 4. TRANSPORTE: PATENTE (Baja a 45mm dentro de su casillero)
-        doc.setFontSize(8);
+        // 4. TRANSPORTE: PATENTE (Subió a 9.5 pt para máxima legibilidad)
+        doc.setFontSize(9.5);
         doc.text(data.transporte?.patente || '', colX + 16, 45.5 + oy);
 
-        // 5. CUIT TRANSPORTE (En su casillero C.U.I.T. Nº a la derecha)
+        // 5. CUIT TRANSPORTE (Subió a 8.5 pt)
         if (data.transporte?.cuit) {
-          doc.setFontSize(7.5);
-          doc.text(data.transporte.cuit, colX + 66, 45.5 + oy);
+          doc.setFontSize(8.5);
+          doc.text(data.transporte.cuit, colX + 65, 45.5 + oy);
         }
 
-        // 6. TRANSPORTISTA / CHOFER (Baja a 51mm en la fila 'Transportista:')
+        // 6. TRANSPORTISTA / CHOFER (Subió a 9 pt)
         if (data.transporte?.transportista) {
-          doc.setFontSize(7.5);
-          const choferCorto = doc.splitTextToSize(data.transporte.transportista, 48)[0] || '';
+          doc.setFontSize(9);
+          const choferCorto = doc.splitTextToSize(data.transporte.transportista, 45)[0] || '';
           doc.text(choferCorto, colX + 18, 51 + oy);
         }
 
-        // 7. DOMICILIO FLETERO (si existe)
+        // 7. DOMICILIO FLETERO (Subió a 8 pt)
         if (data.transporte?.domicilio) {
-          doc.setFontSize(7);
+          doc.setFontSize(8);
           doc.text(data.transporte.domicilio, colX + 16, 56.5 + oy);
         }
 
-        // 8. MERCADERÍA / RENGLONES (Baja a 69mm para arrancar en el primer renglón del cuadro)
-        doc.setFontSize(8.5);
+        // 8. MERCADERÍA / RENGLONES (Subió a 10 pt con salto de 7 mm)
+        doc.setFontSize(10);
         let yItem = 69 + oy;
         (data.items || []).forEach(it => {
           doc.text(String(it.cant || ''), colX + 4, yItem);
           doc.text(it.desc || '', colX + 18, yItem);
-          yItem += 6.5;
+          yItem += 7.0;
         });
 
-        // 9. OBSERVACIONES (En el recuadro OBSERVACIONES inferior)
+        // 9. OBSERVACIONES (Subió a 9 pt)
         if (data.obs) {
-          doc.setFontSize(7.5);
+          doc.setFontSize(9);
           doc.text(data.obs, colX + 12, 116 + oy);
         }
       });
