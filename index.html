@@ -1171,8 +1171,7 @@ doc.text(fechaFormateada, colX + 70, 20.5 + oy);
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
       link.download = `Remitos_Ranelagh_${new Date().toISOString().slice(0,10)}.csv`;
-      link.click();
-    }
-  </script>
-</body>
-</html>
+    link.click();
+  }
+});
+</script>
