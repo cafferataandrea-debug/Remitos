@@ -1011,13 +1011,15 @@
           doc.text(data.transporte.domicilio, colX + 10, 50 + oy);
         }
 
-        // 7. MERCADERÍA / RENGLONES DE MATERIALES
+        // 7. MERCADERÍA / RENGLONES DE MATERIALES (SIN UNIDAD)
         doc.setFontSize(8.5);
-        let yItem = 60 + oy;
+        let yItem = 65 + oy;
         (data.items || []).forEach(it => {
-          doc.text(`${it.cant} ${it.unidad}`, colX + 6, yItem);
-          doc.text(it.desc || '', colX + 26, yItem);
-          yItem += 5; // Separación entre renglones si hay más de uno
+          // Imprime únicamente la cantidad numérica (ej: 30)
+          doc.text(String(it.cant || ''), colX + 6, yItem);
+          // Descripción del material
+          doc.text(it.desc || '', colX + 24, yItem);
+          yItem += 6;
         });
 
         // 8. OBSERVACIONES (Abajo)
