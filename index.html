@@ -432,18 +432,94 @@
       });
     });
 
+    // 1. Cargar inmediatamente desde la memoria local para que nunca quede en 0 al refrescar
+    function inicializarHistorialDesdeCache() {
+      const cache = localStorage.getItem("rc_remitos_cache");
+      if (cache) {
+        try {
+          remitosList = JSON.parse(cache);
+          renderizarHistorial(remitosList);
+        } catch(e) {
+          console.warn("Error leyendo cache local:", e);
+        }
+      }
+    }
+
+    // Ejecutar apenas cargue el DOM
+    window.addEventListener("DOMContentLoaded", () => {
+      inicializarHistorialDesdeCache();
+    });
+
+    // 2. Conectar a Firebase cuando esté listo y sincronizar en vivo
     window.addEventListener("firebase-ready", () => {
+      conectarFirebaseHistorial();
+      conectarFirebaseMaestros();
+    });
+
+    function conectarFirebaseHistorial() {
+      if (!window.cloudDB) return;
+      if (unsubscribeRemitos) unsubscribeRemitos();
+
       const db = window.cloudDB;
       const { collection, onSnapshot } = window.firestoreMethods;
 
-      try {
-        cargarHistorialReciente();
-
-        onSnapshot(collection(db, "patentes"), (snap) => {
-          patentesList = [];
-          snap.forEach(d => patentesList.push({ id: d.id, ...d.data() }));
-          cargarMaestrosUI();
+      // Escucha la colección directa de remitos
+      unsubscribeRemitos = onSnapshot(collection(db, "remitos"), (snap) => {
+        const listaNube = [];
+        snap.forEach(d => {
+          listaNube.push({ id: d.id, ...d.data() });
         });
+
+        // Ordenar por fecha / creado (más recientes arriba)
+        listaNube.sort((a, b) => {
+          const fa = a.creado || a.timestamp || a.fecha || "";
+          const fb = b.creado || b.timestamp || b.fecha || "";
+          return fb.localeCompare(fa);
+        });
+
+        // Actualizar la lista en memoria y en la pantalla
+        remitosList = listaNube;
+        // Guardar copia local de respaldo
+        localStorage.setItem("rc_remitos_cache", JSON.stringify(remitosList));
+        renderizarHistorial(remitosList);
+      }, (err) => {
+        console.warn("Aviso de conexión Firebase en historial:", err);
+      });
+    }
+
+    function conectarFirebaseMaestros() {
+      if (!window.cloudDB) return;
+      const db = window.cloudDB;
+      const { collection, onSnapshot } = window.firestoreMethods;
+
+      onSnapshot(collection(db, "patentes"), (snap) => {
+        patentesList = [];
+        snap.forEach(d => patentesList.push({ id: d.id, ...d.data() }));
+        cargarMaestrosUI();
+      });
+
+      onSnapshot(collection(db, "clientes"), (snap) => {
+        clientesList = [];
+        snap.forEach(d => clientesList.push({ id: d.id, ...d.data() }));
+        cargarMaestrosUI();
+      });
+
+      onSnapshot(collection(db, "materiales"), (snap) => {
+        materialesList = [];
+        snap.forEach(d => {
+          const data = d.data();
+          const nombre = data.desc || data.nombre || data.descripcion || "Material";
+          const unidad = data.unidad || "";
+          materialesList.push({ id: d.id, desc: nombre, unidad: unidad });
+        });
+        cargarMaestrosUI();
+      });
+    }
+
+    // Función auxiliar si se pulsa "Ver Recientes"
+    function cargarHistorialReciente() {
+      conectarFirebaseHistorial();
+    }
 
         onSnapshot(collection(db, "clientes"), (snap) => {
           clientesList = [];
@@ -919,6 +995,11 @@
       });
 
       const nuevoRemito = { numero, fecha, cliente, transporte, obs, items, creado: new Date().toISOString() };
+
+      // >>> PEGAR AQUÍ: Guarda de inmediato en memoria local y actualiza la tabla en pantalla
+      remitosList.unshift({ id: String(numero), ...nuevoRemito });
+      localStorage.setItem("rc_remitos_cache", JSON.stringify(remitosList));
+      renderizarHistorial(remitosList);
 
       try {
         if(window.cloudDB) {
