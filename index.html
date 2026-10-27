@@ -516,41 +516,23 @@
       });
     }
 
-    // Función auxiliar si se pulsa "Ver Recientes"
-    function cargarHistorialReciente() {
-      conectarFirebaseHistorial();
-    }
-
-        onSnapshot(collection(db, "clientes"), (snap) => {
-          clientesList = [];
-          snap.forEach(d => clientesList.push({ id: d.id, ...d.data() }));
-          cargarMaestrosUI();
-        });
-
-        onSnapshot(collection(db, "materiales"), (snap) => {
-        materialesList = [];
-        snap.forEach(d => {
-          const data = d.data();
-          const nombre = data.desc || data.nombre || data.descripcion || "Material";
-          const unidad = data.unidad || "";
-          materialesList.push({ id: d.id, desc: nombre, unidad: unidad });
-        });
-        cargarMaestrosUI();
-      });
-    }
-
     function cargarHistorialReciente() {
       if (!window.cloudDB) return;
       if (unsubscribeRemitos) unsubscribeRemitos();
 
       const db = window.cloudDB;
       const { collection, onSnapshot, query, orderBy, limit } = window.firestoreMethods;
-      const q = query(collection(db, "remitos"), orderBy("creado", "desc"), limit(150));
+      const q = query(collection(db, "remitos"), orderBy("fecha", "desc"), limit(150));
 
       unsubscribeRemitos = onSnapshot(q, (snap) => {
         remitosList = [];
         snap.forEach(d => remitosList.push({ id: d.id, ...d.data() }));
+        const badge = document.getElementById("badge-count");
+        if (badge) badge.innerText = remitosList.length;
+        localStorage.setItem("rc_remitos_cache", JSON.stringify(remitosList));
         renderizarHistorial(remitosList);
+      }, (err) => {
+        console.error("Error al cargar historial:", err);
       });
     }
 
