@@ -1023,7 +1023,7 @@
     function generarPDFLogisvial(data) {
       const { jsPDF } = window.jspdf;
 
-      // Medidas de papel continuo: 340 mm x 210 mm
+      // Papel continuo: 340 mm de ancho x 210 mm de alto
       const doc = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
@@ -1033,95 +1033,103 @@
       const ox = parseFloat(document.getElementById("offset-x").value) || 0;
       const oy = parseFloat(document.getElementById("offset-y").value) || 0;
 
-      // Cada cuerpo mide 113.3 mm de ancho
+      // Cada uno de los 3 cuerpos (ancho 113.3 mm)
       const columnasX = [
-        4 + ox,         // Cuerpo 1: Original
-        117.3 + ox,     // Cuerpo 2: Duplicado
-        230.6 + ox      // Cuerpo 3: Triplicado
+        4 + ox,         // Original
+        117.3 + ox,     // Duplicado
+        230.6 + ox      // Triplicado
       ];
 
-      // Coordenadas verticales (Y) ajustadas al formulario preimpreso de Ranelagh:
-      const yFecha       = 32.5 + oy;  // Casillero D / M / A
-      const yCliente     = 42.0 + oy;  // Señor (es):
-      const yDomicilio   = 48.0 + oy;  // Domicilio:
-      const yLocalidad   = 53.0 + oy;  // Localidad:
-      const yCliCuit     = 58.0 + oy;  // C.U.I.T. Nº del cliente:
-      
-      const yPatente     = 42.0 + oy;  // Patente:
-      const yTransp      = 48.0 + oy;  // Transportista:
-      const yTranspCuit  = 53.0 + oy;  // CUIT Fletero:
-      const yTranspDom   = 58.0 + oy;  // Domicilio Fletero:
+      // Coordenadas Y exactas según la estructura del formulario preimpreso
+      const yFecha       = 31.5 + oy;  // Renglón casillas D | M | A
+      const yCliente     = 41.5 + oy;  // Señor (es):
+      const yDomicilio   = 46.5 + oy;  // Domicilio:
+      const yLocalidad   = 51.5 + oy;  // Localidad:
+      const yCliCuit     = 56.5 + oy;  // C.U.I.T. Nº:
 
-      const yItemsInicio = 68.0 + oy;  // Primer renglón de la tabla
-      const saltoRenglon = 6.2;        // Distancia entre renglones de la grilla
-      const yObs         = 146.0 + oy; // Línea de puntos de OBSERVACIONES:
+      const yPatente     = 41.5 + oy;  // Patente:
+      const yTransp      = 46.5 + oy;  // Transportista:
+      const yTranspCuit  = 51.5 + oy;  // C.U.I.T. Nº (Fletero):
+      const yTranspDom   = 56.5 + oy;  // Domicilio (Fletero):
 
-      // Desarmar la fecha (YYYY-MM-DD)
+      const yItemsInicio = 67.0 + oy;  // Renglón 1 de la tabla de materiales
+      const saltoRenglon = 6.0;        // Salto exacto entre los 9 renglones
+      const yObs         = 132.0 + oy; // Línea de puntos de OBSERVACIONES:
+
+      // Desarmar la fecha (YYYY-MM-DD o DD/MM/AAAA)
       let dia = '', mes = '', anio = '';
       if (data.fecha) {
-        const partes = data.fecha.split('-');
+        const fLimpia = data.fecha.replace(/\//g, '-');
+        const partes = fLimpia.split('-');
         if (partes.length === 3) {
-          dia = partes[2];
-          mes = partes[1];
-          anio = partes[0].slice(-2);
+          // Si viene YYYY-MM-DD
+          if (partes[0].length === 4) {
+            dia = partes[2];
+            mes = partes[1];
+            anio = partes[0].slice(-2);
+          } else { // Si viene DD-MM-YYYY
+            dia = partes[0];
+            mes = partes[1];
+            anio = partes[2].slice(-2);
+          }
         } else {
           dia = data.fecha;
         }
       }
 
-      // Tomar observaciones del objeto o directamente del input en pantalla
       const inputObs = (data.obs || document.getElementById("remito-obs")?.value || "").trim().toUpperCase();
 
       columnasX.forEach((colX) => {
         // 1. FECHA (Casilleros D / M / A)
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(9);
+        doc.setFontSize(8.5);
         if (mes && anio) {
-          doc.text(dia, colX + 83.5, yFecha, { align: "center" });
-          doc.text(mes, colX + 92.5, yFecha, { align: "center" });
-          doc.text(anio, colX + 102.0, yFecha, { align: "center" });
+          doc.text(String(dia), colX + 85.0, yFecha, { align: "center" });
+          doc.text(String(mes), colX + 93.5, yFecha, { align: "center" });
+          doc.text(String(anio), colX + 102.5, yFecha, { align: "center" });
         } else {
-          doc.text(data.fecha || '', colX + 90, yFecha, { align: "center" });
+          doc.text(String(data.fecha || ''), colX + 92, yFecha, { align: "center" });
         }
 
-        // 2. DATOS DEL CLIENTE (Columna izquierda)
+        // 2. BLOQUE CLIENTE (Texto en 1 sola línea por casillero para evitar superposiciones)
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(8);
+        doc.setFontSize(7.5);
         const razonSocial = (data.cliente?.razon || 'PARTICULAR').toUpperCase();
-        doc.text(doc.splitTextToSize(razonSocial, 42), colX + 15, yCliente);
+        // Si el nombre es muy largo, se trunca o achica en vez de quebrar el renglón
+        doc.text(razonSocial.slice(0, 32), colX + 18, yCliente);
 
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(7.5);
+        doc.setFontSize(7);
         if (data.cliente?.domicilio) {
-          doc.text(doc.splitTextToSize(data.cliente.domicilio.toUpperCase(), 42), colX + 15, yDomicilio);
+          doc.text(data.cliente.domicilio.toUpperCase().slice(0, 32), colX + 18, yDomicilio);
         }
         if (data.cliente?.localidad) {
-          doc.text(doc.splitTextToSize(data.cliente.localidad.toUpperCase(), 42), colX + 15, yLocalidad);
+          doc.text(data.cliente.localidad.toUpperCase().slice(0, 30), colX + 18, yLocalidad);
         }
         if (data.cliente?.cuit) {
-          doc.text(`CUIT: ${data.cliente.cuit}`, colX + 15, yCliCuit);
+          doc.text(String(data.cliente.cuit), colX + 18, yCliCuit);
         }
 
-        // 3. TRANSPORTE Y PATENTE (Columna derecha, arranca en colX + 65)
+        // 3. BLOQUE TRANSPORTE (Alineado con las palabras preimpresas del lado derecho)
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(8.5);
+        doc.setFontSize(8);
         if (data.transporte?.patente) {
-          doc.text(data.transporte.patente.toUpperCase(), colX + 75, yPatente);
+          doc.text(data.transporte.patente.toUpperCase(), colX + 70, yPatente);
         }
-        
+
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(7.5);
+        doc.setFontSize(7);
         if (data.transporte?.transportista) {
-          doc.text(doc.splitTextToSize(data.transporte.transportista.toUpperCase(), 35), colX + 75, yTransp);
+          doc.text(data.transporte.transportista.toUpperCase().slice(0, 24), colX + 74, yTransp);
         }
         if (data.transporte?.cuit) {
-          doc.text(data.transporte.cuit, colX + 75, yTranspCuit);
+          doc.text(String(data.transporte.cuit), colX + 70, yTranspCuit);
         }
         if (data.transporte?.domicilio) {
-          doc.text(doc.splitTextToSize(data.transporte.domicilio.toUpperCase(), 35), colX + 75, yTranspDom);
+          doc.text(data.transporte.domicilio.toUpperCase().slice(0, 24), colX + 70, yTranspDom);
         }
 
-        // 4. GRILLA DE MERCADERÍA / MATERIALES
+        // 4. GRILLA DE MATERIALES (Hasta 9 filas)
         doc.setFont("helvetica", "bold");
         doc.setFontSize(8.5);
 
@@ -1129,25 +1137,24 @@
         itemsAImprimir.forEach((it, idx) => {
           const lineaY = yItemsInicio + (idx * saltoRenglon);
 
-          // Cantidad + Unidad en la columna angosta
+          // Cantidad + Unidad en la columna izquierda
           const cantTxt = `${it.cant || ''} ${it.unidad || ''}`.trim();
           doc.text(cantTxt, colX + 11, lineaY, { align: "center" });
 
           // Descripción en la columna ancha
-          const descLineas = doc.splitTextToSize((it.desc || '').toUpperCase(), 80);
-          doc.text(descLineas, colX + 25, lineaY);
+          const descTxt = (it.desc || '').toUpperCase();
+          doc.text(descTxt.slice(0, 48), colX + 25, lineaY);
         });
 
-        // 5. OBSERVACIONES (Sobre la línea de puntos)
+        // 5. OBSERVACIONES (Ubicado exactamente sobre la línea de puntos)
         if (inputObs) {
           doc.setFont("helvetica", "bold");
-          doc.setFontSize(8);
-          const obsLineas = doc.splitTextToSize(inputObs, 78);
-          doc.text(obsLineas, colX + 26, yObs);
+          doc.setFontSize(7.5);
+          doc.text(inputObs.slice(0, 55), colX + 26, yObs);
         }
       });
 
-      // Abrir PDF para enviar a imprimir
+      // Abrir PDF para enviar a la Brother HL-1212W
       const blobUrl = URL.createObjectURL(doc.output('blob'));
       window.open(blobUrl, '_blank');
     }
