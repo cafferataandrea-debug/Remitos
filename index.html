@@ -1023,7 +1023,7 @@
     function generarPDFLogisvial(data) {
       const { jsPDF } = window.jspdf;
 
-      // Medidas exactas de la hoja continua: 340 mm x 210 mm
+      // Medidas de hoja continua: 340 mm x 210 mm
       const doc = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
@@ -1033,43 +1033,39 @@
       const ox = parseFloat(document.getElementById("offset-x").value) || 0;
       const oy = parseFloat(document.getElementById("offset-y").value) || 0;
 
-      // Ancho exacto de cada cuerpo: 113.33 mm
-      // Cuerpo 1: 0 a 113.3 | Cuerpo 2: 113.3 a 226.6 | Cuerpo 3: 226.6 a 340
+      // Paso de 113.33 mm para cada uno de los 3 cuerpos
       const columnasX = [
         0 + ox,
         113.33 + ox,
         226.66 + ox
       ];
 
-      // Coordenadas verticales ajustadas al formulario preimpreso (en mm desde el borde superior)
-      const yFecha       = 32.5 + oy;  // Casillero D | M | A
+      // Coordenadas verticales ajustadas al formulario preimpreso
+      const yFecha       = 32.5 + oy;  // Renglón D | M | A
       const yCliente     = 42.0 + oy;  // Señor (es):
       const yDomicilio   = 47.0 + oy;  // Domicilio:
       const yLocalidad   = 52.0 + oy;  // Localidad:
       const yCliCuit     = 57.0 + oy;  // C.U.I.T. Nº (Cliente)
 
-      const yPatente     = 42.0 + oy;  // Patente:
-      const yTransp      = 47.0 + oy;  // Transportista:
-      const yTranspCuit  = 52.0 + oy;  // C.U.I.T. Nº (Transporte)
-      const yTranspDom   = 57.0 + oy;  // Domicilio:
+      // Transporte: renglones independientes alineados con sus etiquetas preimpresas
+      const yPatente     = 42.0 + oy;  // A la derecha de Patente:
+      const yTransp      = 47.0 + oy;  // A la derecha de Transportista:
+      const yTranspCuit  = 52.0 + oy;  // A la derecha de C.U.I.T. Nº (Transporte)
+      const yTranspDom   = 57.0 + oy;  // A la derecha de Domicilio:
 
-      const yItemsInicio = 72.0 + oy;  // Primer renglón de la grilla de materiales
-      const saltoRenglon = 6.2;        // Altura por renglón
-      const yObs         = 139.0 + oy; // Línea punteada de OBSERVACIONES
+      const yItemsInicio = 72.0 + oy;  // Primer renglón de la tabla de materiales
+      const saltoRenglon = 6.2;        // Distancia entre renglones
+      const yObs         = 139.0 + oy; // Línea de puntos de OBSERVACIONES:
 
       // Desarmar la fecha (YYYY-MM-DD o DD-MM-YYYY)
       let dia = '', mes = '', anio = '';
       if (data.fecha) {
         const partes = data.fecha.replace(/\//g, '-').split('-');
         if (partes.length === 3) {
-          if (partes[0].length === 4) { // Formato YYYY-MM-DD
-            dia = partes[2];
-            mes = partes[1];
-            anio = partes[0].slice(-2);
-          } else { // Formato DD-MM-YYYY
-            dia = partes[0];
-            mes = partes[1];
-            anio = partes[2].slice(-2);
+          if (partes[0].length === 4) {
+            dia = partes[2]; mes = partes[1]; anio = partes[0].slice(-2);
+          } else {
+            dia = partes[0]; mes = partes[1]; anio = partes[2].slice(-2);
           }
         } else {
           dia = data.fecha;
@@ -1079,7 +1075,7 @@
       const inputObs = (data.obs || document.getElementById("remito-obs")?.value || "").trim().toUpperCase();
 
       columnasX.forEach((colX) => {
-        // 1. FECHA (Casillero D | M | A centrado en los cuadritos)
+        // 1. FECHA (Casillero D | M | A)
         doc.setFont("helvetica", "bold");
         doc.setFontSize(8.5);
         if (mes && anio) {
@@ -1090,44 +1086,46 @@
           doc.text(String(data.fecha || ''), colX + 85.0, yFecha, { align: "center" });
         }
 
-        // 2. DATOS DEL CLIENTE (Lado izquierdo de cada cuerpo)
+        // 2. CLIENTE (Columna izquierda)
         doc.setFont("helvetica", "bold");
         doc.setFontSize(7.5);
         const razonSocial = (data.cliente?.razon || 'PARTICULAR').toUpperCase();
-        doc.text(razonSocial.slice(0, 30), colX + 16, yCliente);
+        doc.text(razonSocial.slice(0, 32), colX + 16, yCliente);
 
         doc.setFont("helvetica", "normal");
         doc.setFontSize(7);
         if (data.cliente?.domicilio) {
-          doc.text(data.cliente.domicilio.toUpperCase().slice(0, 30), colX + 16, yDomicilio);
+          doc.text(data.cliente.domicilio.toUpperCase().slice(0, 32), colX + 16, yDomicilio);
         }
         if (data.cliente?.localidad) {
-          doc.text(data.cliente.localidad.toUpperCase().slice(0, 20), colX + 16, yLocalidad);
+          doc.text(data.cliente.localidad.toUpperCase().slice(0, 24), colX + 16, yLocalidad);
         }
         if (data.cliente?.cuit) {
           doc.text(String(data.cliente.cuit), colX + 16, yCliCuit);
         }
 
-        // 3. TRANSPORTE / PATENTE (Lado derecho de cada cuerpo)
+        // 3. TRANSPORTE Y PATENTE (Columna derecha: desplazada a la posición real del casillero)
+        // La etiqueta preimpresa "Patente:" está cerca de colX + 60, el valor se coloca a partir de colX + 78
         doc.setFont("helvetica", "bold");
         doc.setFontSize(8);
         if (data.transporte?.patente) {
-          doc.text(data.transporte.patente.toUpperCase(), colX + 66, yPatente);
+          doc.text(data.transporte.patente.toUpperCase(), colX + 78, yPatente);
         }
 
         doc.setFont("helvetica", "normal");
         doc.setFontSize(7);
         if (data.transporte?.transportista) {
-          doc.text(data.transporte.transportista.toUpperCase().slice(0, 26), colX + 68, yTransp);
+          // Renglón siguiente (debajo de patente, no al lado)
+          doc.text(data.transporte.transportista.toUpperCase().slice(0, 24), colX + 82, yTransp);
         }
         if (data.transporte?.cuit) {
-          doc.text(String(data.transporte.cuit), colX + 66, yTranspCuit);
+          doc.text(String(data.transporte.cuit), colX + 78, yTranspCuit);
         }
         if (data.transporte?.domicilio) {
-          doc.text(data.transporte.domicilio.toUpperCase().slice(0, 26), colX + 66, yTranspDom);
+          doc.text(data.transporte.domicilio.toUpperCase().slice(0, 24), colX + 78, yTranspDom);
         }
 
-        // 4. GRILLA DE MATERIALES (Hasta 9 filas)
+        // 4. GRILLA DE MATERIALES (1 a 9 renglones)
         doc.setFont("helvetica", "bold");
         doc.setFontSize(8.5);
 
@@ -1135,16 +1133,16 @@
         itemsAImprimir.forEach((it, idx) => {
           const lineaY = yItemsInicio + (idx * saltoRenglon);
 
-          // Columna CANTIDAD (Número + Unidad en el casillero angosto)
+          // Cantidad + Unidad
           const cantTxt = `${it.cant || ''} ${it.unidad || ''}`.trim();
           doc.text(cantTxt, colX + 12, lineaY, { align: "center" });
 
-          // Columna DESCRIPCIÓN (En la zona ancha de la tabla)
+          // Descripción del material
           const descTxt = (it.desc || '').toUpperCase();
           doc.text(descTxt.slice(0, 48), colX + 26, lineaY);
         });
 
-        // 5. OBSERVACIONES (Sobre la línea de puntos)
+        // 5. OBSERVACIONES
         if (inputObs) {
           doc.setFont("helvetica", "bold");
           doc.setFontSize(7.5);
