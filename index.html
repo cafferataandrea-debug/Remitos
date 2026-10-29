@@ -1023,7 +1023,7 @@
     function generarPDFLogisvial(data) {
       const { jsPDF } = window.jspdf;
 
-      // Dimensiones exactas del papel continuo: 340 mm x 210 mm (Apaisado)
+      // Medidas de papel continuo: 340 mm x 210 mm
       const doc = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
@@ -1033,42 +1033,47 @@
       const ox = parseFloat(document.getElementById("offset-x").value) || 0;
       const oy = parseFloat(document.getElementById("offset-y").value) || 0;
 
-      // Ancho de cada cuerpo ~113.3 mm (Original, Duplicado, Triplicado)
+      // Cada cuerpo mide 113.3 mm de ancho
       const columnasX = [
-        6 + ox,         // Cuerpo 1: Original
-        119 + ox,       // Cuerpo 2: Duplicado
-        232 + ox        // Cuerpo 3: Triplicado
+        4 + ox,         // Cuerpo 1: Original
+        117.3 + ox,     // Cuerpo 2: Duplicado
+        230.6 + ox      // Cuerpo 3: Triplicado
       ];
 
-      // Alturas (Y) calculadas según el formulario preimpreso de Ranelagh:
+      // Coordenadas verticales (Y) ajustadas al formulario preimpreso de Ranelagh:
       const yFecha       = 32.5 + oy;  // Casillero D / M / A
       const yCliente     = 42.0 + oy;  // Señor (es):
-      const yDomicilio   = 47.5 + oy;  // Domicilio:
-      const yLocCuit     = 53.0 + oy;  // Localidad y CUIT cliente
+      const yDomicilio   = 48.0 + oy;  // Domicilio:
+      const yLocalidad   = 53.0 + oy;  // Localidad:
+      const yCliCuit     = 58.0 + oy;  // C.U.I.T. Nº del cliente:
       
-      const yPatente     = 42.0 + oy;  // Patente: (a la derecha de Señor/es)
-      const yTransp      = 47.5 + oy;  // Transportista:
+      const yPatente     = 42.0 + oy;  // Patente:
+      const yTransp      = 48.0 + oy;  // Transportista:
       const yTranspCuit  = 53.0 + oy;  // CUIT Fletero:
-      const yTranspDom   = 58.5 + oy;  // Domicilio Fletero:
+      const yTranspDom   = 58.0 + oy;  // Domicilio Fletero:
 
-      const yItemsInicio = 74.0 + oy;  // Primer renglón de la tabla
-      const yObs         = 164.0 + oy; // OBSERVACIONES:
+      const yItemsInicio = 68.0 + oy;  // Primer renglón de la tabla
+      const saltoRenglon = 6.2;        // Distancia entre renglones de la grilla
+      const yObs         = 146.0 + oy; // Línea de puntos de OBSERVACIONES:
 
-      // Desarmar la fecha (YYYY-MM-DD) para imprimir día, mes y año separados si viene con guiones
+      // Desarmar la fecha (YYYY-MM-DD)
       let dia = '', mes = '', anio = '';
       if (data.fecha) {
         const partes = data.fecha.split('-');
         if (partes.length === 3) {
           dia = partes[2];
           mes = partes[1];
-          anio = partes[0].slice(-2); // últimos 2 dígitos del año
+          anio = partes[0].slice(-2);
         } else {
           dia = data.fecha;
         }
       }
 
+      // Tomar observaciones del objeto o directamente del input en pantalla
+      const inputObs = (data.obs || document.getElementById("remito-obs")?.value || "").trim().toUpperCase();
+
       columnasX.forEach((colX) => {
-        // 1. FECHA (Casillero D / M / A)
+        // 1. FECHA (Casilleros D / M / A)
         doc.setFont("helvetica", "bold");
         doc.setFontSize(9);
         if (mes && anio) {
@@ -1079,81 +1084,66 @@
           doc.text(data.fecha || '', colX + 90, yFecha, { align: "center" });
         }
 
-        // 2. BLOQUE IZQUIERDO: CLIENTE
+        // 2. DATOS DEL CLIENTE (Columna izquierda)
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(8.5);
-        // Señor (es):
+        doc.setFontSize(8);
         const razonSocial = (data.cliente?.razon || 'PARTICULAR').toUpperCase();
-        doc.text(doc.splitTextToSize(razonSocial, 48), colX + 17, yCliente);
+        doc.text(doc.splitTextToSize(razonSocial, 42), colX + 15, yCliente);
 
         doc.setFont("helvetica", "normal");
         doc.setFontSize(7.5);
-        // Domicilio:
         if (data.cliente?.domicilio) {
-          doc.text(doc.splitTextToSize(data.cliente.domicilio.toUpperCase(), 48), colX + 17, yDomicilio);
+          doc.text(doc.splitTextToSize(data.cliente.domicilio.toUpperCase(), 42), colX + 15, yDomicilio);
         }
-        // Localidad y CUIT:
         if (data.cliente?.localidad) {
-          doc.text(doc.splitTextToSize(data.cliente.localidad.toUpperCase(), 24), colX + 17, yLocCuit);
+          doc.text(doc.splitTextToSize(data.cliente.localidad.toUpperCase(), 42), colX + 15, yLocalidad);
         }
         if (data.cliente?.cuit) {
-          doc.text(data.cliente.cuit, colX + 41, yLocCuit);
+          doc.text(`CUIT: ${data.cliente.cuit}`, colX + 15, yCliCuit);
         }
 
-        // 3. BLOQUE DERECHO: TRANSPORTE / FLETERO
+        // 3. TRANSPORTE Y PATENTE (Columna derecha, arranca en colX + 65)
         doc.setFont("helvetica", "bold");
         doc.setFontSize(8.5);
-        // Patente:
         if (data.transporte?.patente) {
-          doc.text(data.transporte.patente.toUpperCase(), colX + 81, yPatente);
+          doc.text(data.transporte.patente.toUpperCase(), colX + 75, yPatente);
         }
         
         doc.setFont("helvetica", "normal");
         doc.setFontSize(7.5);
-        // Transportista:
         if (data.transporte?.transportista) {
-          doc.text(doc.splitTextToSize(data.transporte.transportista.toUpperCase(), 35), colX + 83, yTransp);
+          doc.text(doc.splitTextToSize(data.transporte.transportista.toUpperCase(), 35), colX + 75, yTransp);
         }
-        // CUIT Fletero:
         if (data.transporte?.cuit) {
-          doc.text(data.transporte.cuit, colX + 81, yTranspCuit);
+          doc.text(data.transporte.cuit, colX + 75, yTranspCuit);
         }
-        // Domicilio Fletero:
         if (data.transporte?.domicilio) {
-          doc.text(doc.splitTextToSize(data.transporte.domicilio.toUpperCase(), 35), colX + 83, yTranspDom);
+          doc.text(doc.splitTextToSize(data.transporte.domicilio.toUpperCase(), 35), colX + 75, yTranspDom);
         }
 
-        // 4. TABLA CENTRAL: MERCADERÍA / MATERIALES
+        // 4. GRILLA DE MERCADERÍA / MATERIALES
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(9);
-        let currentY = yItemsInicio;
+        doc.setFontSize(8.5);
 
-        (data.items || []).forEach(it => {
-          // Columna Cantidad + Unidad
+        const itemsAImprimir = (data.items || []).slice(0, 9);
+        itemsAImprimir.forEach((it, idx) => {
+          const lineaY = yItemsInicio + (idx * saltoRenglon);
+
+          // Cantidad + Unidad en la columna angosta
           const cantTxt = `${it.cant || ''} ${it.unidad || ''}`.trim();
-          doc.text(cantTxt, colX + 10, currentY, { align: "center" });
+          doc.text(cantTxt, colX + 11, lineaY, { align: "center" });
 
-          // Columna Descripción
-          doc.setFont("helvetica", "bold");
-          const descLineas = doc.splitTextToSize((it.desc || '').toUpperCase(), 82);
-          doc.text(descLineas, colX + 24, currentY);
-
-          currentY += 7.5; // Espacio entre renglones si hay más de uno
+          // Descripción en la columna ancha
+          const descLineas = doc.splitTextToSize((it.desc || '').toUpperCase(), 80);
+          doc.text(descLineas, colX + 25, lineaY);
         });
 
-        // 5. OBSERVACIONES (Abajo a la izquierda)
-        if (data.obs) {
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(7.5);
-          const obsLineas = doc.splitTextToSize(data.obs.toUpperCase(), 65);
-          doc.text(obsLineas, colX + 25, yObs);
-        }
-      });
-
-      // Abrir PDF en pestaña nueva para mandar a imprimir
-      const blobUrl = URL.createObjectURL(doc.output('blob'));
-      window.open(blobUrl, '_blank');
-    }
+        // 5. OBSERVACIONES (Sobre la línea de puntos)
+        if (inputObs) {
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8);
+          const obsLineas = doc.splitTextToSize(inputObs, 78);
+          doc.text(obsLineas, col
     
     function renderizarHistorial(lista) {
       const tbody = document.getElementById("historial-tbody");
