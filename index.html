@@ -1033,11 +1033,12 @@
       const ox = parseFloat(document.getElementById("offset-x").value) || 0;
       const oy = parseFloat(document.getElementById("offset-y").value) || 0;
 
-      // Ancho exacto de cada cuerpo: 113.33 mm
+     // Coordenadas horizontales de cada cuerpo ajustadas al papel físico:
+      // Corremos el cuerpo 1 a la izquierda (-5 mm) y reducimos el paso a 111 mm
       const columnasX = [
-        0 + ox,
-        113.33 + ox,
-        226.66 + ox
+        -5.0 + ox,       // Cuerpo 1: Original (se corre hacia la izquierda)
+        106.0 + ox,      // Cuerpo 2: Duplicado
+        217.5 + ox       // Cuerpo 3: Triplicado (se corre ~9 mm hacia la izquierda)
       ];
 
       // Coordenadas verticales ajustadas al formulario físico
