@@ -1143,7 +1143,14 @@
           doc.setFont("helvetica", "bold");
           doc.setFontSize(8);
           const obsLineas = doc.splitTextToSize(inputObs, 78);
-          doc.text(obsLineas, col
+          doc.text(obsLineas, colX + 26, yObs);
+        }
+      });
+
+      // Abrir PDF para enviar a imprimir
+      const blobUrl = URL.createObjectURL(doc.output('blob'));
+      window.open(blobUrl, '_blank');
+    }
     
     function renderizarHistorial(lista) {
       const tbody = document.getElementById("historial-tbody");
