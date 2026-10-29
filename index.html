@@ -1023,7 +1023,7 @@
     function generarPDFLogisvial(data) {
       const { jsPDF } = window.jspdf;
 
-      // Medidas del formulario continuo: 340 mm x 210 mm
+      // Medidas exactas de la hoja continua: 340 mm x 210 mm
       const doc = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
@@ -1043,15 +1043,14 @@
       // Coordenadas verticales ajustadas al formulario físico
       const yFecha       = 24.0 + oy;  // Casillero FECHA (D / M / A)
       
-      const yCliente     = 37.5 + oy;  // Señor (es):
-      const yDomicilio   = 42.5 + oy;  // Domicilio: (acotado para no superponer)
-      const yLocalidad   = 47.5 + oy;  // Localidad: (sola en su renglón)
-      const yPatenteCuit = 52.5 + oy;  // Patente [izq] | CUIT Cliente [der]
-      const yTransp      = 57.5 + oy;  // Transportista [izq] | Datos transporte [der]
+      const yCliente     = 37.5 + oy;  // Renglón 1: Señor (es):
+      const yDomLoc      = 43.0 + oy;  // Renglón 2: Domicilio (izq) | Localidad (der)
+      const yPatenteCuit = 48.5 + oy;  // Renglón 3: Patente (izq)   | CUIT Cliente (der)
+      const yTransp      = 54.0 + oy;  // Renglón 4: Transportista (izq) | Datos fletero (der)
 
-      const yItemsInicio = 68.0 + oy;  // Renglón 1 de materiales
-      const saltoRenglon = 6.2;        // Altura por renglón (hasta 9)
-      const yObs         = 135.0 + oy; // OBSERVACIONES
+      const yItemsInicio = 68.0 + oy;  // Renglón 1 de la tabla de materiales
+      const saltoRenglon = 6.2;        // Distancia entre renglones (hasta 9)
+      const yObs         = 135.0 + oy; // Línea de OBSERVACIONES
 
       // Desarmar la fecha (YYYY-MM-DD o DD-MM-YYYY)
       let dia = '', mes = '', anio = '';
@@ -1071,7 +1070,7 @@
       const inputObs = (data.obs || document.getElementById("remito-obs")?.value || "").trim().toUpperCase();
 
       columnasX.forEach((colX) => {
-        // 1. FECHA (Casillero D | M | A)
+        // 1. FECHA (Casillero D / M / A)
         doc.setFont("courier", "bold");
         doc.setFontSize(9);
         if (mes && anio) {
@@ -1082,26 +1081,25 @@
           doc.text(String(data.fecha || ''), colX + 86.0, yFecha, { align: "center" });
         }
 
-        // 2. SEÑOR (ES): Todo el renglón superior
+        // 2. RENGLÓN 1: SEÑOR (ES)
         doc.setFont("courier", "bold");
         doc.setFontSize(8.5);
         const razon = (data.cliente?.razon || 'PARTICULAR').toUpperCase();
-        doc.text(razon.slice(0, 46), colX + 16, yCliente);
+        doc.text(razon.slice(0, 48), colX + 16, yCliente);
 
-        // 3. DOMICILIO: Con límite de 32 caracteres para no desbordar
+        // 3. RENGLÓN 2: DOMICILIO (Izquierda, máx 24 caracteres) | LOCALIDAD (Derecha)
         doc.setFont("courier", "bold");
         doc.setFontSize(8);
         if (data.cliente?.domicilio) {
-          const domLimpio = data.cliente.domicilio.toUpperCase().slice(0, 32);
-          doc.text(domLimpio, colX + 16, yDomicilio);
+          const domCorto = data.cliente.domicilio.toUpperCase().slice(0, 24);
+          doc.text(domCorto, colX + 16, yDomLoc);
         }
-
-        // 4. LOCALIDAD: Renglón exclusivo para no cruzarse con el CUIT
         if (data.cliente?.localidad) {
-          doc.text(data.cliente.localidad.toUpperCase().slice(0, 26), colX + 16, yLocalidad);
+          const locCorta = data.cliente.localidad.toUpperCase().slice(0, 20);
+          doc.text(locCorta, colX + 68, yDomLoc);
         }
 
-        // 5. PATENTE (Izquierda) | CUIT CLIENTE (A la derecha de la patente)
+        // 4. RENGLÓN 3: PATENTE (Izquierda) | CUIT CLIENTE (Derecha)
         if (data.transporte?.patente) {
           doc.text(data.transporte.patente.toUpperCase(), colX + 16, yPatenteCuit);
         }
@@ -1109,7 +1107,7 @@
           doc.text(String(data.cliente.cuit), colX + 68, yPatenteCuit);
         }
 
-        // 6. TRANSPORTISTA / CHOFER (Izquierda) | CUIT/DOMICILIO FLETERO (Derecha)
+        // 5. RENGLÓN 4: TRANSPORTISTA (Izquierda) | DATOS FLETERO (Derecha)
         if (data.transporte?.transportista) {
           doc.text(data.transporte.transportista.toUpperCase().slice(0, 24), colX + 16, yTransp);
         }
@@ -1118,7 +1116,7 @@
           doc.text(String(refFletero).toUpperCase().slice(0, 20), colX + 68, yTransp);
         }
 
-        // 7. MATERIALES (Renglones 1 al 9)
+        // 6. DETALLE DE MATERIALES (Renglones 1 al 9)
         doc.setFont("courier", "bold");
         doc.setFontSize(9);
 
@@ -1134,7 +1132,7 @@
           doc.text(descTxt.slice(0, 38), colX + 22, lineaY);
         });
 
-        // 8. OBSERVACIONES
+        // 7. OBSERVACIONES
         if (inputObs) {
           doc.setFont("courier", "bold");
           doc.setFontSize(8);
@@ -1142,7 +1140,7 @@
         }
       });
 
-      // Abrir PDF para mandar a la Brother
+      // Abrir PDF para mandar a imprimir
       const blobUrl = URL.createObjectURL(doc.output('blob'));
       window.open(blobUrl, '_blank');
     }
