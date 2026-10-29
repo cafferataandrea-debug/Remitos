@@ -1033,12 +1033,12 @@
       const ox = parseFloat(document.getElementById("offset-x").value) || 0;
       const oy = parseFloat(document.getElementById("offset-y").value) || 0;
 
-     // Coordenadas horizontales de cada cuerpo ajustadas al papel físico:
-      // Corremos el cuerpo 1 a la izquierda (-5 mm) y reducimos el paso a 111 mm
+      // Coordenadas corregidas según la prueba física real:
+      // Inicio en -14 mm para centrar el cuerpo 1, y paso de 107.5 mm entre columnas
       const columnasX = [
-        -5.0 + ox,       // Cuerpo 1: Original (se corre hacia la izquierda)
-        106.0 + ox,      // Cuerpo 2: Duplicado
-        217.5 + ox       // Cuerpo 3: Triplicado (se corre ~9 mm hacia la izquierda)
+        -14.0 + ox,      // Cuerpo 1: Original
+        93.5 + ox,       // Cuerpo 2: Duplicado
+        201.0 + ox       // Cuerpo 3: Triplicado (se desplaza 25 mm más a la izquierda que antes)
       ];
 
       // Coordenadas verticales ajustadas al formulario físico
@@ -1071,15 +1071,15 @@
       const inputObs = (data.obs || document.getElementById("remito-obs")?.value || "").trim().toUpperCase();
 
       columnasX.forEach((colX) => {
-        // 1. FECHA (Casillero D / M / A)
+        // 1. FECHA (centrada en los casilleros D | M | A)
         doc.setFont("courier", "bold");
         doc.setFontSize(9);
         if (mes && anio) {
-          doc.text(String(dia), colX + 78.0, yFecha, { align: "center" });
-          doc.text(String(mes), colX + 86.5, yFecha, { align: "center" });
-          doc.text(String(anio), colX + 95.0, yFecha, { align: "center" });
+          doc.text(String(dia), colX + 73.0, yFecha, { align: "center" });
+          doc.text(String(mes), colX + 81.0, yFecha, { align: "center" });
+          doc.text(String(anio), colX + 89.0, yFecha, { align: "center" });
         } else {
-          doc.text(String(data.fecha || ''), colX + 86.0, yFecha, { align: "center" });
+          doc.text(String(data.fecha || ''), colX + 80.0, yFecha, { align: "center" });
         }
 
         // 2. RENGLÓN 1: SEÑOR (ES)
@@ -1088,7 +1088,7 @@
         const razon = (data.cliente?.razon || 'PARTICULAR').toUpperCase();
         doc.text(razon.slice(0, 48), colX + 16, yCliente);
 
-        // 3. RENGLÓN 2: DOMICILIO (Izquierda, máx 24 caracteres) | LOCALIDAD (Derecha)
+        // 3. RENGLÓN 2: DOMICILIO (Izquierda) | LOCALIDAD (Derecha)
         doc.setFont("courier", "bold");
         doc.setFontSize(8);
         if (data.cliente?.domicilio) {
@@ -1096,8 +1096,8 @@
           doc.text(domCorto, colX + 16, yDomLoc);
         }
         if (data.cliente?.localidad) {
-          const locCorta = data.cliente.localidad.toUpperCase().slice(0, 20);
-          doc.text(locCorta, colX + 68, yDomLoc);
+          const locCorta = data.cliente.localidad.toUpperCase().slice(0, 16);
+          doc.text(locCorta, colX + 61, yDomLoc);
         }
 
         // 4. RENGLÓN 3: PATENTE (Izquierda) | CUIT CLIENTE (Derecha)
@@ -1105,7 +1105,7 @@
           doc.text(data.transporte.patente.toUpperCase(), colX + 16, yPatenteCuit);
         }
         if (data.cliente?.cuit) {
-          doc.text(String(data.cliente.cuit), colX + 68, yPatenteCuit);
+          doc.text(String(data.cliente.cuit), colX + 61, yPatenteCuit);
         }
 
         // 5. RENGLÓN 4: TRANSPORTISTA (Izquierda) | DATOS FLETERO (Derecha)
@@ -1114,7 +1114,7 @@
         }
         const refFletero = data.transporte?.cuit || data.transporte?.domicilio || "";
         if (refFletero) {
-          doc.text(String(refFletero).toUpperCase().slice(0, 20), colX + 68, yTransp);
+          doc.text(String(refFletero).toUpperCase().slice(0, 16), colX + 61, yTransp);
         }
 
         // 6. DETALLE DE MATERIALES (Renglones 1 al 9)
@@ -1141,7 +1141,7 @@
         }
       });
 
-      // Abrir PDF para mandar a imprimir
+      // Abrir PDF para mandar a la Brother
       const blobUrl = URL.createObjectURL(doc.output('blob'));
       window.open(blobUrl, '_blank');
     }
