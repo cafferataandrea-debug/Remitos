@@ -1023,7 +1023,7 @@
     function generarPDFLogisvial(data) {
       const { jsPDF } = window.jspdf;
 
-      // Medidas exactas del papel: 340 mm x 210 mm
+      // Medidas del formulario continuo: 340 mm x 210 mm
       const doc = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
@@ -1033,7 +1033,7 @@
       const ox = parseFloat(document.getElementById("offset-x").value) || 0;
       const oy = parseFloat(document.getElementById("offset-y").value) || 0;
 
-      // Ancho de cada cuerpo: 113.33 mm
+      // Ancho exacto de cada cuerpo: 113.33 mm
       const columnasX = [
         0 + ox,
         113.33 + ox,
@@ -1043,15 +1043,15 @@
       // Coordenadas verticales ajustadas al formulario físico
       const yFecha       = 24.0 + oy;  // Casillero FECHA (D / M / A)
       
-      const yCliente     = 37.5 + oy;  // Señor (es): ocupa toda la línea
-      const yDomicilio   = 42.5 + oy;  // Domicilio:
-      const yLocalidad   = 47.5 + oy;  // Localidad (izq) | CUIT Cliente (der)
-      const yPatente     = 52.5 + oy;  // Patente (izq)   | CUIT Fletero (der)
-      const yTransp      = 57.5 + oy;  // Transportista (izq) | Domicilio Fletero (der)
+      const yCliente     = 37.5 + oy;  // Señor (es):
+      const yDomicilio   = 42.5 + oy;  // Domicilio: (acotado para no superponer)
+      const yLocalidad   = 47.5 + oy;  // Localidad: (sola en su renglón)
+      const yPatenteCuit = 52.5 + oy;  // Patente [izq] | CUIT Cliente [der]
+      const yTransp      = 57.5 + oy;  // Transportista [izq] | Datos transporte [der]
 
-      const yItemsInicio = 68.0 + oy;  // Primer renglón de materiales
-      const saltoRenglon = 6.2;        // Distancia entre renglones (hasta 9)
-      const yObs         = 135.0 + oy; // Línea de OBSERVACIONES
+      const yItemsInicio = 68.0 + oy;  // Renglón 1 de materiales
+      const saltoRenglon = 6.2;        // Altura por renglón (hasta 9)
+      const yObs         = 135.0 + oy; // OBSERVACIONES
 
       // Desarmar la fecha (YYYY-MM-DD o DD-MM-YYYY)
       let dia = '', mes = '', anio = '';
@@ -1071,7 +1071,7 @@
       const inputObs = (data.obs || document.getElementById("remito-obs")?.value || "").trim().toUpperCase();
 
       columnasX.forEach((colX) => {
-        // 1. FECHA
+        // 1. FECHA (Casillero D | M | A)
         doc.setFont("courier", "bold");
         doc.setFontSize(9);
         if (mes && anio) {
@@ -1082,39 +1082,40 @@
           doc.text(String(data.fecha || ''), colX + 86.0, yFecha, { align: "center" });
         }
 
-        // 2. SEÑOR (ES): línea completa para el cliente
+        // 2. SEÑOR (ES): Todo el renglón superior
         doc.setFont("courier", "bold");
         doc.setFontSize(8.5);
         const razon = (data.cliente?.razon || 'PARTICULAR').toUpperCase();
-        doc.text(razon.slice(0, 48), colX + 16, yCliente);
+        doc.text(razon.slice(0, 46), colX + 16, yCliente);
 
-        // 3. DOMICILIO: línea para la dirección
+        // 3. DOMICILIO: Con límite de 32 caracteres para no desbordar
+        doc.setFont("courier", "bold");
+        doc.setFontSize(8);
         if (data.cliente?.domicilio) {
-          doc.text(data.cliente.domicilio.toUpperCase().slice(0, 48), colX + 16, yDomicilio);
+          const domLimpio = data.cliente.domicilio.toUpperCase().slice(0, 32);
+          doc.text(domLimpio, colX + 16, yDomicilio);
         }
 
-        // 4. LOCALIDAD (izquierda) | CUIT CLIENTE (derecha)
+        // 4. LOCALIDAD: Renglón exclusivo para no cruzarse con el CUIT
         if (data.cliente?.localidad) {
-          doc.text(data.cliente.localidad.toUpperCase().slice(0, 24), colX + 16, yLocalidad);
+          doc.text(data.cliente.localidad.toUpperCase().slice(0, 26), colX + 16, yLocalidad);
+        }
+
+        // 5. PATENTE (Izquierda) | CUIT CLIENTE (A la derecha de la patente)
+        if (data.transporte?.patente) {
+          doc.text(data.transporte.patente.toUpperCase(), colX + 16, yPatenteCuit);
         }
         if (data.cliente?.cuit) {
-          doc.text(String(data.cliente.cuit), colX + 68, yLocalidad);
+          doc.text(String(data.cliente.cuit), colX + 68, yPatenteCuit);
         }
 
-        // 5. PATENTE (izquierda) | CUIT FLETERO (derecha)
-        if (data.transporte?.patente) {
-          doc.text(data.transporte.patente.toUpperCase(), colX + 16, yPatente);
-        }
-        if (data.transporte?.cuit) {
-          doc.text(String(data.transporte.cuit), colX + 68, yPatente);
-        }
-
-        // 6. TRANSPORTISTA / CHOFER (izquierda) | DOMICILIO FLETERO (derecha)
+        // 6. TRANSPORTISTA / CHOFER (Izquierda) | CUIT/DOMICILIO FLETERO (Derecha)
         if (data.transporte?.transportista) {
-          doc.text(data.transporte.transportista.toUpperCase().slice(0, 26), colX + 16, yTransp);
+          doc.text(data.transporte.transportista.toUpperCase().slice(0, 24), colX + 16, yTransp);
         }
-        if (data.transporte?.domicilio) {
-          doc.text(data.transporte.domicilio.toUpperCase().slice(0, 20), colX + 68, yTransp);
+        const refFletero = data.transporte?.cuit || data.transporte?.domicilio || "";
+        if (refFletero) {
+          doc.text(String(refFletero).toUpperCase().slice(0, 20), colX + 68, yTransp);
         }
 
         // 7. MATERIALES (Renglones 1 al 9)
@@ -1141,7 +1142,7 @@
         }
       });
 
-      // Abrir PDF para imprimir
+      // Abrir PDF para mandar a la Brother
       const blobUrl = URL.createObjectURL(doc.output('blob'));
       window.open(blobUrl, '_blank');
     }
