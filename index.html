@@ -1020,10 +1020,10 @@
       }
     }
 
-    // MOTOR DE IMPRESIÓN PDF (CALIBRADO CON TIPOGRAFÍA MÁS GRANDE)
     function generarPDFLogisvial(data) {
       const { jsPDF } = window.jspdf;
 
+      // Medidas exactas de la hoja continua de 3 cuerpos: 340 mm de ancho x 220 mm de alto
       const doc = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
@@ -1033,82 +1033,88 @@
       const ox = parseFloat(document.getElementById("offset-x").value) || 0;
       const oy = parseFloat(document.getElementById("offset-y").value) || 0;
 
-      // Ancho y punto de partida milimétrico de cada cuerpo (Original, Duplicado, Triplicado)
-      const columnasX = [3 + ox, 116 + ox, 228 + ox];
+      // Separación de los 3 cuerpos en 340 mm (paso de ~113.3 mm entre cuerpos)
+      // Ajustamos el punto de inicio de cada cuerpo:
+      const columnasX = [
+        10 + ox,         // Cuerpo 1: Original (~10 mm del margen izquierdo)
+        123 + ox,        // Cuerpo 2: Duplicado (salto de 113.3 mm)
+        236 + ox         // Cuerpo 3: Triplicado (salto de 113.3 mm)
+      ];
 
-      doc.setFont("courier", "bold");
+      // Alturas en milímetros medidas dentro de los 220 mm de alto:
+      const yFecha     = 36 + oy;   // Casillero Fecha
+      const yCliente   = 55 + oy;   // Señor(es)
+      const yDomicilio = 64 + oy;   // Domicilio / Localidad / CUIT
+      const yItems     = 88 + oy;   // Detalle: Cantidad, Unidad, Material
+      const yObs       = 145 + oy;  // Observaciones
+      const yPatente   = 160 + oy;  // Patente y Chofer
 
       columnasX.forEach((colX) => {
-        // 1. FECHA (Subió a 9 pt)
-        doc.setFontSize(9);
-        let fechaFormateada = data.fecha || '';
-        if (fechaFormateada.includes('-')) {
-          const partes = fechaFormateada.split('-');
-          if (partes.length === 3) {
-            fechaFormateada = `${partes[2]}/${partes[1]}/${partes[0]}`;
-          }
-        }
-        doc.text(fechaFormateada, colX + 70, 20.5 + oy);
-
-        // 2. SEÑOR(ES) y LOCALIDAD (Subió a 9 pt)
-        doc.setFontSize(9);
-        const razonCorta = doc.splitTextToSize(data.cliente?.razon || '', 46)[0] || '';
-        doc.text(razonCorta, colX + 16, 33 + oy);
-        if (data.cliente?.localidad) {
-          doc.text(data.cliente.localidad, colX + 65, 33 + oy);
-        }
-
-        // 3. DOMICILIO y CUIT CLIENTE (Subió a 8.5 pt)
-        doc.setFontSize(8.5);
-        const domiLineas = doc.splitTextToSize(data.cliente?.domicilio || '', 46);
-        doc.text(domiLineas[0] || '', colX + 16, 39 + oy);
-        if (data.cliente?.cuit) {
-          doc.text(data.cliente.cuit, colX + 65, 39 + oy);
-        }
-
-        // 4. TRANSPORTE: PATENTE (Subió a 9.5 pt para máxima legibilidad)
-        doc.setFontSize(9.5);
-        doc.text(data.transporte?.patente || '', colX + 16, 45.5 + oy);
-
-        // 5. CUIT TRANSPORTE (Subió a 8.5 pt)
-        if (data.transporte?.cuit) {
-          doc.setFontSize(8.5);
-          doc.text(data.transporte.cuit, colX + 65, 45.5 + oy);
-        }
-
-        // 6. TRANSPORTISTA / CHOFER (Subió a 9 pt)
-        if (data.transporte?.transportista) {
-          doc.setFontSize(9);
-          const choferCorto = doc.splitTextToSize(data.transporte.transportista, 45)[0] || '';
-          doc.text(choferCorto, colX + 18, 51 + oy);
-        }
-
-        // 7. DOMICILIO FLETERO (Subió a 8 pt)
-        if (data.transporte?.domicilio) {
-          doc.setFontSize(8);
-          doc.text(data.transporte.domicilio, colX + 16, 56.5 + oy);
-        }
-
-        // 8. MERCADERÍA / RENGLONES (Subió a 10 pt con salto de 7 mm)
+        // 1. FECHA (alineada a la derecha de cada cuerpo)
+        doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
-        let yItem = 69 + oy;
+        doc.text(data.fecha || '', colX + 80, yFecha, { align: "right" });
+
+        // 2. CLIENTE (Señor/es)
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        const cliLineas = doc.splitTextToSize(data.cliente?.razon || 'PARTICULAR', 90);
+        doc.text(cliLineas, colX + 5, yCliente);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        if (data.cliente?.domicilio) {
+          doc.text(data.cliente.domicilio, colX + 5, yDomicilio);
+        }
+        if (data.cliente?.localidad) {
+          doc.text(data.cliente.localidad, colX + 5, yDomicilio + 4);
+        }
+        if (data.cliente?.cuit) {
+          doc.text(`CUIT: ${data.cliente.cuit}`, colX + 5, yDomicilio + 8);
+        }
+
+        // 3. MERCADERÍA / DETALLE
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        let currentY = yItems;
         (data.items || []).forEach(it => {
-          doc.text(String(it.cant || ''), colX + 4, yItem);
-          doc.text(it.desc || '', colX + 18, yItem);
-          yItem += 7.0;
+          doc.text(String(it.cant || ''), colX + 5, currentY);
+          doc.text(String(it.unidad || ''), colX + 20, currentY);
+          
+          doc.setFont("helvetica", "normal");
+          const descLineas = doc.splitTextToSize(it.desc || '', 60);
+          doc.text(descLineas, colX + 32, currentY);
+          doc.setFont("helvetica", "bold");
+          
+          currentY += 8; // espacio entre renglones si hay más de un ítem
         });
 
-        // 9. OBSERVACIONES (Subió a 9 pt)
+        // 4. OBSERVACIONES (restringido al ancho de cada cuerpo)
         if (data.obs) {
-          doc.setFontSize(9);
-          doc.text(data.obs, colX + 12, 116 + oy);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(8);
+          const obsLineas = doc.splitTextToSize(`OBS: ${data.obs}`, 90);
+          doc.text(obsLineas, colX + 5, yObs);
+        }
+
+        // 5. TRANSPORTE / PATENTE
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        if (data.transporte?.patente) {
+          doc.text(`PATENTE: ${data.transporte.patente}`, colX + 5, yPatente);
+        }
+        if (data.transporte?.transportista) {
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(8);
+          doc.text(data.transporte.transportista, colX + 5, yPatente + 4);
         }
       });
 
+      // Abrir PDF para enviar a imprimir
       const blobUrl = URL.createObjectURL(doc.output('blob'));
       window.open(blobUrl, '_blank');
     }
-
+    
     function renderizarHistorial(lista) {
       const tbody = document.getElementById("historial-tbody");
       const badge = document.getElementById("badge-count");
