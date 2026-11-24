@@ -273,7 +273,7 @@
             <button onclick="abrirModalPatente()" class="text-xs bg-blue-700 hover:bg-blue-800 text-white px-2 py-1 rounded font-semibold">+ Agregar</button>
           </div>
         </div>
-        <p class="text-xs text-slate-500 mb-3">Patentes y transportistas vinculados.</p>
+        <p class="text-xs text-slate-500 mb-3">Patentes, transportistas y cubicaje (m³).</p>
         <div id="lista-maestro-patentes" class="space-y-2 max-h-[500px] overflow-y-auto pr-1"></div>
       </div>
 
@@ -328,9 +328,15 @@
       </div>
       <input type="hidden" id="m-tra-id">
       <div class="space-y-3 text-xs">
-        <div>
-          <label class="font-semibold block mb-1">Patente:</label>
-          <input type="text" id="m-tra-patente" class="w-full border rounded p-2 uppercase font-mono font-bold outline-none focus:ring-2 focus:ring-blue-600">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="font-semibold block mb-1">Patente:</label>
+            <input type="text" id="m-tra-patente" class="w-full border rounded p-2 uppercase font-mono font-bold outline-none focus:ring-2 focus:ring-blue-600">
+          </div>
+          <div>
+            <label class="font-semibold block mb-1">Cubicaje del camión (m³):</label>
+            <input type="number" step="any" id="m-tra-cubicaje" placeholder="Ej: 30" class="w-full border rounded p-2 font-mono font-bold outline-none focus:ring-2 focus:ring-blue-600">
+          </div>
         </div>
         <div>
           <label class="font-semibold block mb-1">Transportista / Fletero:</label>
@@ -387,6 +393,7 @@
         <h3 class="font-bold text-lg text-slate-800">Importación Masiva de Patentes</h3>
         <button onclick="cerrarModalImportador()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">×</button>
       </div>
+      <p class="text-xs text-slate-500 mb-2">Formato: Patente | Transportista | CUIT | Domicilio | Cubicaje (m³)</p>
       <textarea id="import-paste-area" rows="6" class="w-full border rounded-lg p-3 text-xs font-mono outline-none mb-3"></textarea>
       <div class="flex justify-between items-center mb-4">
         <button onclick="procesarTextoPegado()" class="bg-slate-800 text-white text-xs font-semibold px-4 py-2 rounded">Procesar</button>
@@ -449,6 +456,7 @@
         try {
           remitosList = JSON.parse(cache);
           renderizarHistorial(remitosList);
+          precargarUltimoClienteYMaterial(false);
         } catch(e) {
           console.warn("Error leyendo cache local:", e);
         }
@@ -482,6 +490,7 @@
         remitosList = listaNube;
         localStorage.setItem("rc_remitos_cache", JSON.stringify(remitosList));
         renderizarHistorial(remitosList);
+        precargarUltimoClienteYMaterial(false);
       }, (err) => {
         console.warn("Aviso de conexión Firebase en historial:", err);
       });
@@ -605,13 +614,14 @@
       const listPat = document.getElementById("lista-maestro-patentes");
       listPat.innerHTML = '';
       patentesList.forEach((p) => {
+        const cubTexto = p.cubicaje ? ` • <span class="font-mono font-bold text-emerald-700">${p.cubicaje} m³</span>` : '';
         listPat.innerHTML += `
           <div class="border border-slate-200 rounded p-2.5 text-xs bg-slate-50 relative group">
             <div class="absolute top-2 right-2 flex items-center gap-1.5">
               <button onclick="editarPatente('${p.id}')" title="Editar" class="text-slate-400 hover:text-blue-700 font-bold text-sm">✏️</button>
               <button onclick="borrarRegistro('patentes', '${p.id}')" title="Eliminar" class="text-slate-400 hover:text-rose-600 font-bold text-sm">🗑️</button>
             </div>
-            <div class="font-mono font-bold text-blue-800 pr-14">${p.patente}</div>
+            <div class="font-mono font-bold text-blue-800 pr-14">${p.patente}${cubTexto}</div>
             <div class="text-slate-700 font-semibold">${p.transportista || '-'}</div>
             <div class="text-slate-500">CUIT: ${p.cuit || '-'} | ${p.domicilio || '-'}</div>
           </div>`;
@@ -653,9 +663,12 @@
         const drop = document.getElementById("dropdown-patente");
         const filtrados = patentesList.filter(p => (p.patente || "").toLowerCase().includes(q) || (p.transportista || "").toLowerCase().includes(q));
         drop.innerHTML = filtrados.length === 0 ? '<div class="p-2.5 text-slate-400 text-center">No hay coincidencias</div>' : filtrados.map(p => `
-          <div onclick="seleccionarPatentePorId('${p.id}')" class="p-2 hover:bg-blue-50 cursor-pointer">
-            <span class="font-mono font-bold text-blue-900 bg-blue-100 px-1 py-0.5 rounded mr-1">${p.patente}</span>
-            <span class="font-semibold text-slate-700">${p.transportista || ''}</span>
+          <div onclick="seleccionarPatentePorId('${p.id}')" class="p-2 hover:bg-blue-50 cursor-pointer flex justify-between items-center">
+            <div>
+              <span class="font-mono font-bold text-blue-900 bg-blue-100 px-1 py-0.5 rounded mr-1">${p.patente}</span>
+              <span class="font-semibold text-slate-700">${p.transportista || ''}</span>
+            </div>
+            ${p.cubicaje ? `<span class="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">${p.cubicaje} m³</span>` : ''}
           </div>`).join('');
         drop.classList.remove("hidden");
       }
@@ -692,12 +705,27 @@
       document.getElementById("tra-domicilio").value = p.domicilio || "";
       document.getElementById("search-patente").value = p.patente + " - " + (p.transportista || "");
       document.getElementById("dropdown-patente").classList.add("hidden");
+
+      // Autocompletar cantidad del material con el cubicaje del camión si está definido
+      if (p.cubicaje !== undefined && p.cubicaje !== null && String(p.cubicaje).trim() !== "") {
+        const cantInputs = document.querySelectorAll("#items-tbody .item-cant");
+        if (cantInputs.length > 0) {
+          cantInputs.forEach(input => {
+            input.value = p.cubicaje;
+          });
+        } else {
+          agregarFilaItem(p.cubicaje, "m3", "");
+        }
+      }
     }
 
     function insertarMaterialPorId(id) {
       const m = materialesList.find(x => x.id === id);
       if (!m) return;
-      agregarFilaItem(30, m.unidad, m.desc);
+      const patenteActual = (document.getElementById("tra-patente")?.value || "").trim().toUpperCase();
+      const patObj = patentesList.find(p => (p.patente || "").trim().toUpperCase() === patenteActual);
+      const cantInicial = (patObj && patObj.cubicaje) ? patObj.cubicaje : 30;
+      agregarFilaItem(cantInicial, m.unidad, m.desc);
       document.getElementById("search-material").value = "";
       document.getElementById("dropdown-material").classList.add("hidden");
     }
@@ -718,6 +746,61 @@
     function eliminarFila(btn) {
       const tr = btn.closest("tr");
       if(document.querySelectorAll("#items-tbody tr").length > 1) tr.remove();
+    }
+
+    function limpiarTransporteFormulario() {
+      const idsTransporte = ["tra-patente", "tra-cuit", "tra-nombre", "tra-domicilio", "search-patente"];
+      idsTransporte.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+      });
+    }
+
+    function precargarUltimoClienteYMaterial(forzar = false) {
+      if (!Array.isArray(remitosList) || remitosList.length === 0) return;
+
+      const cliRazonEl = document.getElementById("cli-razon");
+      const primerDescEl = document.querySelector("#items-tbody .item-desc");
+
+      if (!forzar) {
+        const yaTieneCliente = cliRazonEl && cliRazonEl.value.trim() !== "";
+        const yaTieneMaterial = primerDescEl && primerDescEl.value.trim() !== "";
+        if (yaTieneCliente || yaTieneMaterial) return;
+      }
+
+      const ultimo = remitosList[0];
+      if (!ultimo) return;
+
+      if (ultimo.cliente) {
+        if (cliRazonEl) cliRazonEl.value = ultimo.cliente.razon || "";
+        const locEl = document.getElementById("cli-localidad");
+        const cuitEl = document.getElementById("cli-cuit");
+        const domEl = document.getElementById("cli-domicilio");
+        const searchCliEl = document.getElementById("search-cliente");
+
+        if (locEl) locEl.value = ultimo.cliente.localidad || "";
+        if (cuitEl) cuitEl.value = ultimo.cliente.cuit || "";
+        if (domEl) domEl.value = ultimo.cliente.domicilio || "";
+        if (searchCliEl) searchCliEl.value = ultimo.cliente.razon || "";
+      }
+
+      const tbody = document.getElementById("items-tbody");
+      if (tbody && Array.isArray(ultimo.items) && ultimo.items.length > 0) {
+        tbody.innerHTML = "";
+        ultimo.items.forEach(it => {
+          const tr = document.createElement("tr");
+          tr.className = "border-b border-slate-100";
+          tr.innerHTML = `
+            <td class="py-1.5 pr-2"><input type="number" step="any" value="${it.cant ?? ""}" class="item-cant w-full border border-slate-300 rounded px-2 py-1 text-sm font-semibold"></td>
+            <td class="py-1.5 pr-2"><input type="text" value="${it.unidad ?? ""}" class="item-unidad w-full border border-slate-300 rounded px-2 py-1 text-sm"></td>
+            <td class="py-1.5 pr-2"><input type="text" value="${it.desc ?? ""}" class="item-desc w-full border border-slate-300 rounded px-2 py-1 text-sm uppercase"></td>
+            <td class="py-1.5 text-center"><button onclick="eliminarFila(this)" class="text-slate-400 hover:text-rose-600 font-bold">×</button></td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      limpiarTransporteFormulario();
     }
 
     function abrirModalCliente() { 
@@ -765,6 +848,7 @@
       document.getElementById("modal-patente-titulo").innerText = "Agregar Patente";
       document.getElementById("m-tra-id").value = "";
       document.getElementById("m-tra-patente").value = "";
+      document.getElementById("m-tra-cubicaje").value = "";
       document.getElementById("m-tra-nombre").value = "";
       document.getElementById("m-tra-cuit").value = "";
       document.getElementById("m-tra-domicilio").value = "";
@@ -778,6 +862,7 @@
       document.getElementById("modal-patente-titulo").innerText = "Editar Patente";
       document.getElementById("m-tra-id").value = pat.id;
       document.getElementById("m-tra-patente").value = pat.patente || "";
+      document.getElementById("m-tra-cubicaje").value = pat.cubicaje ?? "";
       document.getElementById("m-tra-nombre").value = pat.transportista || "";
       document.getElementById("m-tra-cuit").value = pat.cuit || "";
       document.getElementById("m-tra-domicilio").value = pat.domicilio || "";
@@ -787,16 +872,20 @@
     async function guardarNuevaPatente() {
       const id = document.getElementById("m-tra-id").value;
       const patente = document.getElementById("m-tra-patente").value.trim().toUpperCase();
+      const cubRaw = document.getElementById("m-tra-cubicaje").value.trim();
+      const cubicaje = cubRaw !== "" ? parseFloat(cubRaw) : "";
       const transportista = document.getElementById("m-tra-nombre").value.trim().toUpperCase();
       const cuit = document.getElementById("m-tra-cuit").value.trim();
       const domicilio = document.getElementById("m-tra-domicilio").value.trim();
       if(!patente) return alert("Ingresa la patente");
 
+      const payload = { patente, cubicaje, transportista, cuit, domicilio };
+
       if(window.cloudDB) {
         if(id) {
-          await window.firestoreMethods.updateDoc(window.firestoreMethods.doc(window.cloudDB, "patentes", id), { patente, transportista, cuit, domicilio });
+          await window.firestoreMethods.updateDoc(window.firestoreMethods.doc(window.cloudDB, "patentes", id), payload);
         } else {
-          await window.firestoreMethods.addDoc(window.firestoreMethods.collection(window.cloudDB, "patentes"), { patente, transportista, cuit, domicilio });
+          await window.firestoreMethods.addDoc(window.firestoreMethods.collection(window.cloudDB, "patentes"), payload);
         }
       }
       cerrarModalPatente();
@@ -860,12 +949,14 @@
         if(cols.length < 2) cols = lin.split(",");
 
         const pat = (cols[0] || "").trim().toUpperCase();
-        const transp = (cols[1] || "").trim();
+        const transp = (cols[1] || "").trim().toUpperCase();
         const cuit = (cols[2] || "").trim();
         const dom = (cols[3] || "").trim();
+        const cubRaw = (cols[4] || "").trim().replace(",", ".");
+        const cubicaje = cubRaw !== "" && !isNaN(parseFloat(cubRaw)) ? parseFloat(cubRaw) : "";
 
         if(pat && pat.length >= 4) {
-          patentesAImportar.push({ patente: pat, transportista: transp, cuit: cuit, domicilio: dom });
+          patentesAImportar.push({ patente: pat, transportista: transp, cuit: cuit, domicilio: dom, cubicaje: cubicaje });
         }
       });
 
@@ -878,6 +969,7 @@
             <td class="p-2">${p.transportista}</td>
             <td class="p-2 font-mono">${p.cuit}</td>
             <td class="p-2 text-slate-500">${p.domicilio}</td>
+            <td class="p-2 font-mono font-bold text-emerald-700">${p.cubicaje !== "" ? p.cubicaje + " m³" : "-"}</td>
           </tr>`;
       });
 
@@ -902,7 +994,7 @@
 
       cerrarModalImportador();
       alert(`¡Se importaron ${patentesAImportar.length} patentes con éxito!`);
-      btn.innerText = "Confirmar e Importar a la Nube";
+      btn.innerText = "Confirmar";
       btn.disabled = false;
     }
 
@@ -989,6 +1081,8 @@
         if (!isNaN(numVal)) {
           numInput.value = String(numVal + 1).padStart(numero.length, "0");
         }
+
+        precargarUltimoClienteYMaterial(true);
 
         if(dispararImpresion) {
           generarPDFLogisvial(nuevoRemito);
