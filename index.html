@@ -1020,7 +1020,12 @@
       }
     }
 
-    function generarPDFLogisvial(data) {
+        function generarPDFLogisvial(data) {
+      if (data && data.estado === "ANULADO") {
+        alert("⛔ OPERACIÓN DENEGADA: Este remito se encuentra ANULADO y no puede ser impreso.");
+        return;
+      }
+
       const { jsPDF } = window.jspdf;
 
       // Medidas de hoja continua: 340 mm x 210 mm
@@ -1148,6 +1153,94 @@
       const blobUrl = URL.createObjectURL(doc.output('blob'));
       window.open(blobUrl, '_blank');
     }
+
+    async function anularRemito(idRemito) {
+      const confirmacion = confirm("¿Estás seguro de que deseas ANULAR este remito? No se borrará del historial, pero quedará invalidado y bloqueado para impresión.");
+      if (!confirmacion) return;
+
+      const fechaAnulacion = new Date().toISOString();
+
+      try {
+        if (window.cloudDB && window.firestoreMethods) {
+          const { doc, updateDoc } = window.firestoreMethods;
+          await updateDoc(doc(window.cloudDB, "remitos", String(idRemito)), {
+            estado: "ANULADO",
+            fechaAnulacion
+          });
+        }
+
+        remitosList = remitosList.map(r =>
+          String(r.id) === String(idRemito)
+            ? { ...r, estado: "ANULADO", fechaAnulacion }
+            : r
+        );
+        localStorage.setItem("rc_remitos_cache", JSON.stringify(remitosList));
+        renderizarHistorial(remitosList);
+
+        alert("Remito anulado con éxito.");
+      } catch (error) {
+        console.error("Error al anular remito:", error);
+        alert("Hubo un error al intentar anular el remito.");
+      }
+    }
+
+    function renderizarHistorial(lista) {
+      const tbody = document.getElementById("historial-tbody");
+      const badge = document.getElementById("badge-count");
+      if (badge) badge.innerText = lista.length;
+
+      if (lista.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-400">No se encontraron remitos en este período.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = "";
+      lista.forEach(r => {
+        const esAnulado = r.estado === "ANULADO";
+        const matResumen = r.items ? r.items.map(i => `${i.cant} ${i.unidad} - ${i.desc}`).join("<br>") : "-";
+        const remitoSeguro = JSON.stringify(r).replace(/'/g, "&#39;");
+
+        const estiloFila = esAnulado
+          ? 'class="border-b border-rose-100 bg-rose-50/50 opacity-75"'
+          : 'class="border-b border-slate-100 hover:bg-slate-50"';
+
+        const textoNumero = esAnulado
+          ? `<span class="line-through text-rose-700">${r.numero || "-"}</span> <span class="ml-1 inline-block bg-rose-600 text-white font-sans text-[10px] px-1.5 py-0.5 rounded-full font-bold">ANULADO</span>`
+          : `<span class="text-cyan-800">${r.numero || "-"}</span>`;
+
+        const botonImprimir = esAnulado
+          ? `<button disabled title="Remito anulado: no se puede imprimir" class="bg-slate-100 text-slate-400 text-xs px-2.5 py-1 rounded cursor-not-allowed font-bold">Imprimir PDF</button>`
+          : `<button onclick='reimprimirRemitoPDF(${remitoSeguro})' class="bg-cyan-100 text-cyan-800 hover:bg-cyan-200 text-xs px-2.5 py-1 rounded font-bold">Imprimir PDF</button>`;
+
+        const botonAnular = esAnulado
+          ? `<span class="text-rose-600 font-bold text-xs" title="Remito anulado">✕ ANULADO</span>`
+          : `<button onclick="anularRemito('${r.id}')" title="Anular remito sin borrar" class="bg-rose-50 text-rose-600 hover:bg-rose-100 px-2.5 py-1 rounded text-xs font-bold border border-rose-200">✕ Anular</button>`;
+
+        tbody.innerHTML += `
+          <tr ${estiloFila}>
+            <td class="py-3 px-4 font-semibold text-slate-700">${r.fecha}</td>
+            <td class="py-3 px-4 font-mono font-bold">${textoNumero}</td>
+            <td class="py-3 px-4 font-bold text-slate-800">${r.cliente?.razon || "-"}</td>
+            <td class="py-3 px-4 font-mono font-bold text-blue-700">${r.transporte?.patente || "-"}</td>
+            <td class="py-3 px-4 text-xs">${matResumen}</td>
+            <td class="py-3 px-4 text-center">
+              <div class="flex items-center justify-center gap-2">
+                ${botonImprimir}
+                ${botonAnular}
+              </div>
+            </td>
+          </tr>`;
+      });
+    }
+
+    function reimprimirRemitoPDF(r) {
+      if (r && r.estado === "ANULADO") {
+        alert("⛔ OPERACIÓN NO PERMITIDA: Este remito se encuentra ANULADO y no se puede imprimir.");
+        return;
+      }
+      generarPDFLogisvial(r);
+    }
+
     
     function renderizarHistorial(lista) {
       const tbody = document.getElementById("historial-tbody");
