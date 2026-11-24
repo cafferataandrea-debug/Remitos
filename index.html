@@ -165,14 +165,14 @@
                 <th class="py-2 w-12 text-center"></th>
               </tr>
             </thead>
-<tbody id="items-tbody">
-  <tr class="border-b border-slate-100">
-    <td class="py-1.5 pr-2"><input type="number" step="any" placeholder="0" class="item-cant w-full border border-slate-300 rounded px-2 py-1 text-sm font-semibold"></td>
-    <td class="py-1.5 pr-2"><input type="text" placeholder="m3 / tn" class="item-unidad w-full border border-slate-300 rounded px-2 py-1 text-sm"></td>
-    <td class="py-1.5 pr-2"><input type="text" placeholder="DESCRIPCIÓN DEL MATERIAL" class="item-desc w-full border border-slate-300 rounded px-2 py-1 text-sm uppercase"></td>
-    <td class="py-1.5 text-center"><button onclick="eliminarFila(this)" class="text-slate-400 hover:text-rose-600 font-bold">×</button></td>
-  </tr>
-</tbody>
+            <tbody id="items-tbody">
+              <tr class="border-b border-slate-100">
+                <td class="py-1.5 pr-2"><input type="number" step="any" placeholder="0" class="item-cant w-full border border-slate-300 rounded px-2 py-1 text-sm font-semibold"></td>
+                <td class="py-1.5 pr-2"><input type="text" placeholder="m3 / tn" class="item-unidad w-full border border-slate-300 rounded px-2 py-1 text-sm"></td>
+                <td class="py-1.5 pr-2"><input type="text" placeholder="DESCRIPCIÓN DEL MATERIAL" class="item-desc w-full border border-slate-300 rounded px-2 py-1 text-sm uppercase"></td>
+                <td class="py-1.5 text-center"><button onclick="eliminarFila(this)" class="text-slate-400 hover:text-rose-600 font-bold">×</button></td>
+              </tr>
+            </tbody>
           </table>
           <div class="mt-4">
             <label class="text-xs text-slate-500 block">OBSERVACIONES:</label>
@@ -419,7 +419,6 @@
       document.getElementById("filtro-desde").value = hoy;
       document.getElementById("filtro-hasta").value = hoy;
 
-      // Carga offsets guardados en esta PC
       const savedOx = localStorage.getItem("rc_offset_x");
       const savedOy = localStorage.getItem("rc_offset_y");
       if (savedOx !== null && document.getElementById("offset-x")) {
@@ -440,9 +439,10 @@
           document.getElementById("dropdown-material").classList.add("hidden");
         }
       });
+
+      inicializarHistorialDesdeCache();
     });
 
-    // 1. Cargar inmediatamente desde la memoria local para que nunca quede en 0 al refrescar
     function inicializarHistorialDesdeCache() {
       const cache = localStorage.getItem("rc_remitos_cache");
       if (cache) {
@@ -455,12 +455,6 @@
       }
     }
 
-    // Ejecutar apenas cargue el DOM
-    window.addEventListener("DOMContentLoaded", () => {
-      inicializarHistorialDesdeCache();
-    });
-
-    // 2. Conectar a Firebase cuando esté listo y sincronizar en vivo
     window.addEventListener("firebase-ready", () => {
       conectarFirebaseHistorial();
       conectarFirebaseMaestros();
@@ -473,23 +467,19 @@
       const db = window.cloudDB;
       const { collection, onSnapshot } = window.firestoreMethods;
 
-      // Escucha la colección directa de remitos
       unsubscribeRemitos = onSnapshot(collection(db, "remitos"), (snap) => {
         const listaNube = [];
         snap.forEach(d => {
           listaNube.push({ id: d.id, ...d.data() });
         });
 
-        // Ordenar por fecha / creado (más recientes arriba)
         listaNube.sort((a, b) => {
           const fa = a.creado || a.timestamp || a.fecha || "";
           const fb = b.creado || b.timestamp || b.fecha || "";
           return fb.localeCompare(fa);
         });
 
-        // Actualizar la lista en memoria y en la pantalla
         remitosList = listaNube;
-        // Guardar copia local de respaldo
         localStorage.setItem("rc_remitos_cache", JSON.stringify(remitosList));
         renderizarHistorial(remitosList);
       }, (err) => {
@@ -930,7 +920,6 @@
         return;
       }
 
-      // Validación anti-duplicados estricta
       const existeEnMemoria = remitosList.some(r => String(r.numero).trim() === numero);
       if (existeEnMemoria) {
         alert(`ERROR: El remito Nº ${numero} ya existe en el sistema. Cambia el número antes de guardar.`);
@@ -985,7 +974,6 @@
 
       const nuevoRemito = { numero, fecha, cliente, transporte, obs, items, creado: new Date().toISOString() };
 
-      // Guarda de inmediato en memoria local y actualiza la tabla en pantalla
       remitosList.unshift({ id: String(numero), ...nuevoRemito });
       localStorage.setItem("rc_remitos_cache", JSON.stringify(remitosList));
       renderizarHistorial(remitosList);
@@ -1020,7 +1008,7 @@
       }
     }
 
-        function generarPDFLogisvial(data) {
+    function generarPDFLogisvial(data) {
       if (data && data.estado === "ANULADO") {
         alert("⛔ OPERACIÓN DENEGADA: Este remito se encuentra ANULADO y no puede ser impreso.");
         return;
@@ -1038,30 +1026,21 @@
       const ox = parseFloat(document.getElementById("offset-x").value) || 0;
       const oy = parseFloat(document.getElementById("offset-y").value) || 0;
 
-      // Desplazamiento general +3.5 mm a la derecha manteniendo el paso de 107.5 mm
       const columnasX = [
         -6.5 + ox,       // Cuerpo 1: Original
         101.0 + ox,      // Cuerpo 2: Duplicado
         208.5 + ox       // Cuerpo 3: Triplicado
       ];
 
-      // Alturas (Y) calibradas con la impresión
-      const yFecha       = 30.5 + oy;  // Casillero FECHA (D / M / A)
-      
-      const yCliente     = 44.0 + oy;  // Renglón 1: Señor (es):
-      const yDomLoc      = 49.5 + oy;  // Renglón 2: Domicilio (izq) | Localidad (der)
-      
-      // Módulo bajado para encajar sobre las líneas preimpresas:
-      const yPatenteCuit = 58.5 + oy;  // Renglón 3: Patente (izq)   | CUIT Cliente (der)
-      const yTransp      = 64.0 + oy;  // Renglón 4: Transportista (izq) | Datos fletero (der)
+      const yFecha       = 30.5 + oy;
+      const yCliente     = 44.0 + oy;
+      const yDomLoc      = 49.5 + oy;
+      const yPatenteCuit = 58.5 + oy;
+      const yTransp      = 64.0 + oy;
+      const yItemsInicio = 76.0 + oy;
+      const saltoRenglon = 6.2;
+      const yObs         = 168.0 + oy;
 
-      const yItemsInicio = 76.0 + oy;  // Renglón 1 de la tabla de materiales
-      const saltoRenglon = 6.2;        // Distancia entre renglones (hasta 9)
-      
-      // Observaciones bajadas al recuadro inferior
-      const yObs         = 168.0 + oy; // Línea dentro del recuadro de OBSERVACIONES
-
-      // Desarmar la fecha (YYYY-MM-DD o DD-MM-YYYY)
       let dia = '', mes = '', anio = '';
       if (data.fecha) {
         const partes = data.fecha.replace(/\//g, '-').split('-');
@@ -1079,7 +1058,6 @@
       const inputObs = (data.obs || document.getElementById("remito-obs")?.value || "").trim().toUpperCase();
 
       columnasX.forEach((colX) => {
-        // 1. FECHA (centrada en los casilleros D | M | A)
         doc.setFont("courier", "bold");
         doc.setFontSize(9);
         if (mes && anio) {
@@ -1090,13 +1068,11 @@
           doc.text(String(data.fecha || ''), colX + 80.0, yFecha, { align: "center" });
         }
 
-        // 2. RENGLÓN 1: SEÑOR (ES)
         doc.setFont("courier", "bold");
         doc.setFontSize(8.5);
         const razon = (data.cliente?.razon || 'PARTICULAR').toUpperCase();
         doc.text(razon.slice(0, 48), colX + 16, yCliente);
 
-        // 3. RENGLÓN 2: DOMICILIO (Izquierda) | LOCALIDAD (Derecha)
         doc.setFont("courier", "bold");
         doc.setFontSize(8);
         if (data.cliente?.domicilio) {
@@ -1108,7 +1084,6 @@
           doc.text(locCorta, colX + 61, yDomLoc);
         }
 
-        // 4. RENGLÓN 3: PATENTE (Izquierda) | CUIT CLIENTE (Derecha)
         if (data.transporte?.patente) {
           doc.text(data.transporte.patente.toUpperCase(), colX + 16, yPatenteCuit);
         }
@@ -1116,7 +1091,6 @@
           doc.text(String(data.cliente.cuit), colX + 61, yPatenteCuit);
         }
 
-        // 5. RENGLÓN 4: TRANSPORTISTA (Izquierda) | DATOS FLETERO (Derecha)
         if (data.transporte?.transportista) {
           doc.text(data.transporte.transportista.toUpperCase().slice(0, 24), colX + 16, yTransp);
         }
@@ -1125,7 +1099,6 @@
           doc.text(String(refFletero).toUpperCase().slice(0, 16), colX + 61, yTransp);
         }
 
-        // 6. DETALLE DE MATERIALES (Renglones 1 al 9)
         doc.setFont("courier", "bold");
         doc.setFontSize(9);
 
@@ -1141,7 +1114,6 @@
           doc.text(descTxt.slice(0, 38), colX + 22, lineaY);
         });
 
-        // 7. OBSERVACIONES (En su recuadro inferior)
         if (inputObs) {
           doc.setFont("courier", "bold");
           doc.setFontSize(8);
@@ -1149,7 +1121,6 @@
         }
       });
 
-      // Abrir PDF para mandar a imprimir
       const blobUrl = URL.createObjectURL(doc.output('blob'));
       window.open(blobUrl, '_blank');
     }
@@ -1238,40 +1209,6 @@
         alert("⛔ OPERACIÓN NO PERMITIDA: Este remito se encuentra ANULADO y no se puede imprimir.");
         return;
       }
-      generarPDFLogisvial(r);
-    }
-
-    
-    function renderizarHistorial(lista) {
-      const tbody = document.getElementById("historial-tbody");
-      const badge = document.getElementById("badge-count");
-      if (badge) badge.innerText = lista.length;
-      
-      if(lista.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-400">No se encontraron remitos en este período.</td></tr>';
-        return;
-      }
-      tbody.innerHTML = "";
-      lista.forEach(r => {
-        const matResumen = r.items ? r.items.map(i => `${i.cant} ${i.unidad} - ${i.desc}`).join("<br>") : "-";
-        tbody.innerHTML += `
-          <tr class="border-b border-slate-100 hover:bg-slate-50">
-            <td class="py-3 px-4 font-semibold text-slate-700">${r.fecha}</td>
-            <td class="py-3 px-4 font-mono font-bold text-cyan-800">${r.numero || "-"}</td>
-            <td class="py-3 px-4 font-bold text-slate-800">${r.cliente?.razon || "-"}</td>
-            <td class="py-3 px-4 font-mono font-bold text-blue-700">${r.transporte?.patente || "-"}</td>
-            <td class="py-3 px-4 text-xs">${matResumen}</td>
-            <td class="py-3 px-4 text-center">
-              <div class="flex items-center justify-center gap-2">
-                <button onclick='reimprimirRemitoPDF(${JSON.stringify(r)})' class="bg-cyan-100 text-cyan-800 hover:bg-cyan-200 text-xs px-2.5 py-1 rounded font-bold">Imprimir PDF</button>
-                <button onclick="borrarRegistro('remitos', '${r.id}')" title="Eliminar remito" class="text-slate-400 hover:text-rose-600 text-base font-bold">🗑️</button>
-              </div>
-            </td>
-          </tr>`;
-      });
-    }
-
-    function reimprimirRemitoPDF(r) {
       generarPDFLogisvial(r);
     }
 
